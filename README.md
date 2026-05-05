@@ -22,7 +22,7 @@ GitOps-managed Kubernetes homelab on Hetzner Cloud. Talos Linux + Flux CD.
 | OS | Talos Linux 1.13 |
 | K8s | v1.32.0 |
 | CNI | Cilium (eBPF) |
-| Ingress | nginx-ingress (NodePort 30080/30443) |
+| Ingress | Traefik (NodePort 30080/30443, dashboard `traefik.homelab`) |
 | GitOps | Flux CD v2 |
 | Storage | local-path-provisioner v0.0.30 (default SC) |
 | Image sync | image-reflector v0.34.0 + image-automation v0.39.0 |
@@ -44,13 +44,20 @@ Flux watches both repos. `HomeLab_chenar` bootstraps the cluster and points Flux
 
 ```
 HomeLab_chenar/
-└── flux-system/
-    └── flux-system/
-        ├── gotk-components.yaml       # Flux controllers (auto-managed)
-        ├── gotk-sync.yaml             # Watches this repo
-        ├── kustomization.yaml         # Includes echovote source + kustomization
-        ├── echovote-source.yaml       # GitRepository → gitops-echovote
-        └── echovote-kustomization.yaml # Kustomization → k8s/ in gitops-echovote
+├── flux-system/
+│   └── flux-system/
+│       ├── gotk-components.yaml        # Flux controllers (auto-managed)
+│       ├── gotk-sync.yaml              # Watches this repo
+│       ├── kustomization.yaml          # Includes all below
+│       ├── traefik-kustomization.yaml  # Kustomization → infrastructure/traefik
+│       ├── echovote-source.yaml        # GitRepository → gitops-echovote
+│       └── echovote-kustomization.yaml # Kustomization → k8s/ in gitops-echovote
+└── infrastructure/
+    └── traefik/
+        ├── namespace.yaml              # traefik namespace
+        ├── helmrepository.yaml         # Traefik Helm chart source
+        ├── helmrelease.yaml            # Traefik install (NodePort 30080/30443)
+        └── kustomization.yaml
 ```
 
 ---
