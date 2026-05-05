@@ -1,0 +1,54 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: traefik
+      version: ">=30.0.0 <35.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: traefik
+        namespace: flux-system
+      interval: 1h
+  install:
+    createNamespace: true
+    crds: Create          # install Traefik CRDs (IngressRoute, Middleware, etc.)
+  upgrade:
+    crds: CreateReplace   # update CRDs on helm upgrade
+  values:
+    # NodePort — no LoadBalancer in homelab
+    service:
+      type: NodePort
+
+    ports:
+      web:
+        port: 8000
+        nodePort: 30080   # HTTP  — same ports nginx was using
+      websecure:
+        port: 8443
+        nodePort: 30443   # HTTPS
+
+    # Dashboard at traefik.homelab (add to /etc/hosts)
+    ingressRoute:
+      dashboard:
+        enabled: true
+        matchRule: Host(`traefik.homelab`)
+        entryPoints: ["web"]
+
+    # Logs
+    logs:
+      general:
+        level: INFO
+      access:
+        enabled: true
+
+    # Allow cross-namespace IngressRoute references
+    providers:
+      kubernetesCRD:
+        allowCrossNamespace: true
+      kubernetesIngress:
+        enabled: false   # disable standard Ingress support — using IngressRoute CRDs only
