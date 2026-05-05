@@ -16,39 +16,49 @@ spec:
       interval: 1h
   install:
     createNamespace: true
-    crds: Create          # install Traefik CRDs (IngressRoute, Middleware, etc.)
+    crds: Create          # install IngressRoute, Middleware, etc. CRDs
   upgrade:
-    crds: CreateReplace   # update CRDs on helm upgrade
+    crds: CreateReplace   # keep CRDs up to date on upgrades
   values:
     # NodePort — no LoadBalancer in homelab
     service:
       type: NodePort
 
     ports:
+      # App traffic — accessible at http://178.105.91.23:30080
       web:
         port: 8000
-        nodePort: 30080   # HTTP  — same ports nginx was using
+        nodePort: 30080
+      # HTTPS (for when cert-manager is added)
       websecure:
         port: 8443
-        nodePort: 30443   # HTTPS
+        nodePort: 30443
+      # Dashboard — accessible at http://178.105.91.23:30900/dashboard/
+      traefik:
+        port: 9000
+        nodePort: 30900
+        expose:
+          default: true
 
-    # Dashboard at traefik.homelab (add to /etc/hosts)
+    # Enable dashboard + insecure API (homelab — no auth needed)
+    api:
+      dashboard: true
+      insecure: true
+
+    # Disable the built-in IngressRoute for dashboard (we expose it via NodePort directly)
     ingressRoute:
       dashboard:
-        enabled: true
-        matchRule: Host(`traefik.homelab`)
-        entryPoints: ["web"]
+        enabled: false
 
-    # Logs
     logs:
       general:
         level: INFO
       access:
         enabled: true
 
-    # Allow cross-namespace IngressRoute references
+    # Allow IngressRoute resources from any namespace (echovote → flux-system)
     providers:
       kubernetesCRD:
         allowCrossNamespace: true
       kubernetesIngress:
-        enabled: false   # disable standard Ingress support — using IngressRoute CRDs only
+        enabled: false   # IngressRoute CRDs only — no standard Ingress
