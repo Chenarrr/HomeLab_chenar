@@ -7,7 +7,8 @@ spec:
   interval: 5m
   path: ./k8s
   dependsOn:
-    - name: traefik   # wait for Traefik CRDs before applying IngressRoute
+    - name: traefik              # IngressRoute CRDs must exist
+    - name: cert-manager-issuers # Certificate CRD must exist (for cert-manager Certificates)
   prune: true
   sourceRef:
     kind: GitRepository

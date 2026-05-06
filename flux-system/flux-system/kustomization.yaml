@@ -1,8 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-- gotk-components.yaml
-- gotk-sync.yaml
-- traefik-kustomization.yaml
-- echovote-source.yaml
-- echovote-kustomization.yaml
+  - gotk-components.yaml
+  - gotk-sync.yaml
+  # Infrastructure — order matters: cilium-lb before traefik (LB IP before service)
+  - cilium-lb-kustomization.yaml
+  - traefik-kustomization.yaml
+  - cert-manager-kustomization.yaml
+  - cert-manager-issuers-kustomization.yaml
+  # Apps
+  - echovote-source.yaml
+  - echovote-kustomization.yaml

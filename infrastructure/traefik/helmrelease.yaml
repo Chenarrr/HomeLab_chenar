@@ -20,27 +20,37 @@ spec:
   upgrade:
     crds: CreateReplace   # keep CRDs up to date on upgrades
   values:
-    # NodePort — no LoadBalancer in homelab
+    # LoadBalancer — Cilium LB IPAM assigns 178.105.91.23 from the homelab-public pool.
+    # Port 80/443 become directly accessible (no :30080/:30443 needed).
+    # NodePort is kept as a fallback for direct IP access during DNS propagation.
     service:
-      type: NodePort
+      type: LoadBalancer
+      labels:
+        cilium-lb-pool: homelab   # matches the CiliumLoadBalancerIPPool serviceSelector
 
     ports:
-      # App traffic — accessible at http://178.105.91.23:30080
+      # HTTP — port 80 directly accessible via LB, :30080 via NodePort fallback
       web:
         port: 8000
         nodePort: 30080
-      # HTTPS (for when cert-manager is added)
+        expose:
+          default: true
+
+      # HTTPS — port 443 directly accessible via LB, :30443 via NodePort fallback
       websecure:
         port: 8443
         nodePort: 30443
-      # Dashboard — accessible at http://178.105.91.23:30900/dashboard/
+        expose:
+          default: true
+
+      # Traefik dashboard — NodePort only, not exposed via LB (keep private)
       traefik:
         port: 9000
         nodePort: 30900
         expose:
           default: true
 
-    # Enable dashboard + insecure API (homelab — no auth needed)
+    # Enable dashboard + insecure API on the traefik entrypoint (homelab only)
     api:
       dashboard: true
       insecure: true
@@ -48,7 +58,7 @@ spec:
     additionalArguments:
       - "--api.insecure=true"
 
-    # Disable the built-in IngressRoute for dashboard (we expose it via NodePort directly)
+    # Disable built-in dashboard IngressRoute (we access it via NodePort :30900)
     ingressRoute:
       dashboard:
         enabled: false
@@ -59,9 +69,14 @@ spec:
       access:
         enabled: true
 
-    # Allow IngressRoute resources from any namespace (echovote → flux-system)
     providers:
+      # IngressRoute CRDs — primary routing (cross-namespace for echovote)
       kubernetesCRD:
         allowCrossNamespace: true
+
+      # Standard Ingress — enabled for cert-manager HTTP-01 ACME challenge solver.
+      # cert-manager creates temporary Ingress objects; Traefik serves them.
+      # Does NOT conflict with IngressRoute — both providers coexist.
       kubernetesIngress:
-        enabled: false   # IngressRoute CRDs only — no standard Ingress
+        enabled: true
+        ingressClass: traefik

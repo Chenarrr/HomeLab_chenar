@@ -1,0 +1,37 @@
+---
+# Staging issuer — use first to avoid Let's Encrypt rate limits.
+# Staging certs are NOT trusted by browsers but prove the pipeline works.
+# Switch to letsencrypt-prod once certs issue successfully.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    email: chenar.breshk@gmail.com
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+      # HTTP-01: cert-manager creates a temporary Ingress on port 80.
+      # Requires: Traefik kubernetesIngress provider enabled + port 80 reachable.
+      - http01:
+          ingress:
+            ingressClassName: traefik
+---
+# Production issuer — switch to this after staging succeeds.
+# Rate limited: 50 certs/week, 5 failed validations/hour per hostname.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    email: chenar.breshk@gmail.com
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik

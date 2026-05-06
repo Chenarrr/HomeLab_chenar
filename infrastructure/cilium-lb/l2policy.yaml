@@ -1,0 +1,15 @@
+---
+# L2 announcement policy — optional for single-VPS (IP already on eth0),
+# included for completeness and future multi-IP setups.
+# Announces LB IPs via ARP on the node's primary network interface.
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: homelab-l2
+spec:
+  # Announce on any ethernet interface
+  interfaces:
+    - "^eth[0-9]+"
+    - "^ens[0-9]+"
+  loadBalancerIPs: true
+  externalIPs: true
