@@ -45,6 +45,9 @@ spec:
       dashboard: true
       insecure: true
 
+    additionalArguments:
+      - "--api.insecure=true"
+
     # Disable the built-in IngressRoute for dashboard (we expose it via NodePort directly)
     ingressRoute:
       dashboard:
