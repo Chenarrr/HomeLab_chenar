@@ -1,5 +1,5 @@
 # This secret will be synced from Infisical (self-hosted)
-# Create it in Infisical dashboard: https://infisical.chenarrr.space
+# Create it in Infisical dashboard: https://infisical.chenar.space
 apiVersion: secrets.infisical.com/v1alpha1
 kind: InfisicalSecret
 metadata:

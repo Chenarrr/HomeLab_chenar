@@ -1,6 +1,6 @@
 # HomeLab Chenar
 
-**Domain:** `chenarrr.space` | **VPS:** Hetzner Cloud (`178.105.91.23`)  
+**Domain:** `chenar.space` | **VPS:** Hetzner Cloud (`178.105.91.23`)  
 GitOps-managed Kubernetes homelab. Talos Linux + Flux CD + Traefik.
 
 ---
@@ -9,10 +9,10 @@ GitOps-managed Kubernetes homelab. Talos Linux + Flux CD + Traefik.
 
 | URL | Purpose | Authentication |
 |-----|---------|----------------|
-| `https://chenarrr.space` | Traefik Dashboard (private) | BasicAuth |
-| `https://infisical.chenarrr.space` | Infisical Secrets Manager (private) | Login |
-| `https://echovote.chenarrr.space` | EchoVote application | Public |
-| `https://<app>.chenarrr.space` | Future applications (auto-deploy) | Per-app |
+| `https://chenar.space` | Traefik Dashboard (private) | BasicAuth |
+| `https://infisical.chenar.space` | Infisical Secrets Manager (private) | Login |
+| `https://echovote.chenar.space` | EchoVote application | Public |
+| `https://<app>.chenar.space` | Future applications (auto-deploy) | Per-app |
 
 **DNS Configuration (Namecheap):**
 ```
@@ -25,7 +25,7 @@ A     *              178.105.91.23
 ## Architecture
 
 **Scalable for unlimited applications:**
-1. Each application gets its own subdomain: `<app>.chenarrr.space`
+1. Each application gets its own subdomain: `<app>.chenar.space`
 2. Flux watches application repositories and auto-deploys to Kubernetes
 3. Traefik routes traffic and handles SSL (Let's Encrypt)
 4. Add new application = add GitRepository + Kustomization to `flux-system/`
@@ -62,7 +62,7 @@ A     *              178.105.91.23
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| Traefik Dashboard | `https://chenarrr.space` | BasicAuth protected |
+| Traefik Dashboard | `https://chenar.space` | BasicAuth protected |
 | Kubernetes API | `https://178.105.91.23:6443` | Restrict to your IP in Hetzner Firewall |
 | Talos API | `178.105.91.23:50000` | Restrict to your IP in Hetzner Firewall |
 
@@ -72,7 +72,7 @@ A     *              178.105.91.23
 
 | Application | Subdomain | Namespace | Repository |
 |-------------|-----------|-----------|------------|
-| EchoVote | `echovote.chenarrr.space` | `echovote` | [gitops-echovote](https://github.com/Chenarrr/gitops-echovote) |
+| EchoVote | `echovote.chenar.space` | `echovote` | [gitops-echovote](https://github.com/Chenarrr/gitops-echovote) |
 
 ---
 
@@ -85,7 +85,7 @@ A     *              178.105.91.23
    gitops-myapp/
    ├── deployment.yaml
    ├── service.yaml
-   ├── ingressroute.yaml  # Points to myapp.chenarrr.space
+   ├── ingressroute.yaml  # Points to myapp.chenar.space
    └── kustomization.yaml
    ```
 
@@ -120,7 +120,7 @@ A     *              178.105.91.23
    ```
 
 3. **Reference in `flux-system/flux-system/kustomization.yaml`**
-4. **Commit and push** - Flux auto-deploys to `myapp.chenarrr.space`
+4. **Commit and push** - Flux auto-deploys to `myapp.chenar.space`
 
 **Scales to 50+ applications** - repeat this pattern for each application.
 
@@ -164,11 +164,11 @@ kubectl logs -n cert-manager -l app=cert-manager
 
 ## DNS Configuration (Namecheap)
 
-Go to `chenarrr.space` → Advanced DNS:
+Go to `chenar.space` → Advanced DNS:
 
 | Type | Host | Value | TTL |
 |------|------|-------|-----|
 | A | @ | 178.105.91.23 | Automatic |
 | A | * | 178.105.91.23 | Automatic |
 
-**Propagation:** 5-30 minutes. Check with `dig chenarrr.space`
+**Propagation:** 5-30 minutes. Check with `dig chenar.space`

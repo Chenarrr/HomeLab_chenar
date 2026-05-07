@@ -7,7 +7,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`infisical.chenarrr.space`)
+    - match: Host(`infisical.chenar.space`)
       kind: Rule
       services:
         - name: infisical-frontend
@@ -24,7 +24,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`infisical.chenarrr.space`)
+    - match: Host(`infisical.chenar.space`)
       kind: Rule
       middlewares:
         - name: redirect-to-https
