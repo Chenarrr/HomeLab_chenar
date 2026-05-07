@@ -7,8 +7,8 @@ spec:
   interval: 1h
   chart:
     spec:
-      chart: infisical
-      version: ">=0.6.0 <1.0.0"
+      chart: infisical-standalone
+      version: ">=1.0.0 <2.0.0"
       sourceRef:
         kind: HelmRepository
         name: infisical
@@ -17,11 +17,6 @@ spec:
   install:
     createNamespace: true
   values:
-    # Self-hosted Infisical
-    infisical:
-      enabled: true
-      
-    # PostgreSQL for Infisical data
     postgresql:
       enabled: true
       auth:
@@ -32,8 +27,7 @@ spec:
         persistence:
           enabled: true
           size: 10Gi
-    
-    # Redis for caching
+
     redis:
       enabled: true
       auth:
@@ -42,15 +36,9 @@ spec:
         persistence:
           enabled: true
           size: 2Gi
-    
-    # Ingress
+
+    # Disable bundled nginx — Traefik handles ingress
     ingress:
-      enabled: false  # We'll create IngressRoute separately
-    
-    # Frontend config
-    frontend:
-      replicaCount: 1
-      
-    # Backend config  
-    backend:
-      replicaCount: 1
+      enabled: false
+    ingress-nginx:
+      enabled: false

@@ -1,22 +1,9 @@
-# This secret will be synced from Infisical (self-hosted)
-# Create it in Infisical dashboard: https://infisical.chenar.space
-apiVersion: secrets.infisical.com/v1alpha1
-kind: InfisicalSecret
-metadata:
-  name: traefik-dashboard-auth-sync
-  namespace: traefik
-spec:
-  hostAPI: http://infisical-backend.infisical.svc.cluster.local/api
-  resyncInterval: 60
-  authentication:
-    universalAuth:
-      secretsScope:
-        projectSlug: homelab
-        envSlug: prod
-        secretsPath: /traefik
-      credentialsRef:
-        secretName: infisical-auth
-        secretNamespace: infisical
-  managedSecretReference:
-    secretName: traefik-dashboard-auth
-    secretType: Opaque
+# This secret is NOT managed by Flux/git.
+# Apply it manually once:
+#
+#   htpasswd -nb <user> <password> | base64
+#   kubectl create secret generic traefik-dashboard-auth \
+#     --from-literal=users='<htpasswd-line>' \
+#     -n traefik
+#
+# Flux will not prune manually-created secrets (no flux.toolkit.fluxcd.io/prune label).

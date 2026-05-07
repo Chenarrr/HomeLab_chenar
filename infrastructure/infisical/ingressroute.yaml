@@ -1,7 +1,7 @@
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
-  name: infisical-dashboard
+  name: infisical
   namespace: infisical
 spec:
   entryPoints:
@@ -10,27 +10,10 @@ spec:
     - match: Host(`infisical.chenar.space`)
       kind: Rule
       services:
-        - name: infisical-frontend
-          port: 80
+        - name: infisical-infisical-standalone-infisical
+          port: 8080
   tls:
     certResolver: letsencrypt-prod
----
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: infisical-redirect-https
-  namespace: infisical
-spec:
-  entryPoints:
-    - web
-  routes:
-    - match: Host(`infisical.chenar.space`)
-      kind: Rule
-      middlewares:
-        - name: redirect-to-https
-      services:
-        - name: infisical-frontend
-          port: 80
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
@@ -41,3 +24,20 @@ spec:
   redirectScheme:
     scheme: https
     permanent: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: infisical-http-redirect
+  namespace: infisical
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`infisical.chenar.space`)
+      kind: Rule
+      middlewares:
+        - name: redirect-to-https
+      services:
+        - name: infisical-infisical-standalone-infisical
+          port: 8080

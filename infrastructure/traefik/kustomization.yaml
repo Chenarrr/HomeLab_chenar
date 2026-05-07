@@ -4,6 +4,5 @@ resources:
   - namespace.yaml
   - helmrepository.yaml
   - helmrelease.yaml
-  - dashboard-auth.yaml
   - dashboard-middleware.yaml
   - dashboard-ingressroute.yaml
