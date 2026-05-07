@@ -11,8 +11,10 @@ spec:
     kind: GitRepository
     name: flux-system
   # Cilium LB pool must exist before Traefik service requests a LoadBalancer IP
+  # Infisical must be ready before Traefik (for secrets sync)
   dependsOn:
     - name: cilium-lb
+    - name: infisical
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease

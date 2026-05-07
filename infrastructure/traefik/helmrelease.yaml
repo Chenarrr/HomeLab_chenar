@@ -57,6 +57,9 @@ spec:
 
     additionalArguments:
       - "--api.insecure=true"
+      - "--certificatesresolvers.letsencrypt-prod.acme.email=chenar.breshk@gmail.com"
+      - "--certificatesresolvers.letsencrypt-prod.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.letsencrypt-prod.acme.httpchallenge.entrypoint=web"
 
     # Disable built-in dashboard IngressRoute (we access it via NodePort :30900)
     ingressRoute:

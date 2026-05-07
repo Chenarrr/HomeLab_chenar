@@ -1,0 +1,56 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: infisical
+  namespace: infisical
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: infisical
+      version: ">=0.6.0 <1.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: infisical
+        namespace: flux-system
+      interval: 1h
+  install:
+    createNamespace: true
+  values:
+    # Self-hosted Infisical
+    infisical:
+      enabled: true
+      
+    # PostgreSQL for Infisical data
+    postgresql:
+      enabled: true
+      auth:
+        username: infisical
+        password: infisical-postgres-password-change-me
+        database: infisical
+      primary:
+        persistence:
+          enabled: true
+          size: 10Gi
+    
+    # Redis for caching
+    redis:
+      enabled: true
+      auth:
+        enabled: false
+      master:
+        persistence:
+          enabled: true
+          size: 2Gi
+    
+    # Ingress
+    ingress:
+      enabled: false  # We'll create IngressRoute separately
+    
+    # Frontend config
+    frontend:
+      replicaCount: 1
+      
+    # Backend config  
+    backend:
+      replicaCount: 1

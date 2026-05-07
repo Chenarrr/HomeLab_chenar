@@ -3,7 +3,8 @@ kind: Kustomization
 resources:
   - gotk-components.yaml
   - gotk-sync.yaml
-  # Infrastructure — order matters: cilium-lb before traefik (LB IP before service)
+  # Infrastructure — order matters
+  - infisical-kustomization.yaml
   - cilium-lb-kustomization.yaml
   - traefik-kustomization.yaml
   - cert-manager-kustomization.yaml
