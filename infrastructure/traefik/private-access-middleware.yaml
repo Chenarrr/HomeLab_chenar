@@ -1,0 +1,15 @@
+# Reusable middleware for all private apps.
+# Add to any IngressRoute in apps/private/ to restrict access to your home IP only.
+# Usage in IngressRoute:
+#   middlewares:
+#     - name: private-access
+#       namespace: traefik
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: private-access
+  namespace: traefik
+spec:
+  ipAllowList:
+    sourceRange:
+      - 185.240.17.117/32   # YOUR_HOME_IP — update if IP changes

@@ -7,8 +7,13 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`chenar.space`) && ClientIP(`185.240.17.117`)
+    - match: Host(`traefik.chenar.space`)
       kind: Rule
+      middlewares:
+        - name: private-access
+          namespace: traefik
+        - name: dashboard-auth
+          namespace: traefik
       services:
         - name: api@internal
           kind: TraefikService
