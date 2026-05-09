@@ -27,6 +27,8 @@ spec:
         persistence:
           enabled: true
           size: 10Gi
+        nodeSelector:
+          kubernetes.io/hostname: ubuntu-8gb-homelab2
 
     redis:
       enabled: true
@@ -36,6 +38,12 @@ spec:
         persistence:
           enabled: true
           size: 2Gi
+        nodeSelector:
+          kubernetes.io/hostname: ubuntu-8gb-homelab2
+
+    infisical:
+      nodeSelector:
+        kubernetes.io/hostname: ubuntu-8gb-homelab2
 
     # Disable bundled nginx — Traefik handles ingress
     ingress:
