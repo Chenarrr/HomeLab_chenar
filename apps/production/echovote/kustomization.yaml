@@ -17,3 +17,4 @@ resources:
   - image-automation/imagerepositories.yaml
   - image-automation/imagepolicies.yaml
   - image-automation/imageupdateautomation.yaml
+  - image-automation/flux-secrets.yaml
