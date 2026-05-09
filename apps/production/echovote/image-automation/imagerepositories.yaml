@@ -1,0 +1,21 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: echovote-server
+  namespace: flux-system
+spec:
+  image: ghcr.io/chenarrr/echovote-server
+  interval: 5m
+  secretRef:
+    name: echovote-ghcr-auth
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: echovote-client
+  namespace: flux-system
+spec:
+  image: ghcr.io/chenarrr/echovote-client
+  interval: 5m
+  secretRef:
+    name: echovote-ghcr-auth

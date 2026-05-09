@@ -1,0 +1,37 @@
+---
+# Production apps — source code repos are public, always deployed
+# Add new apps: create apps/production/<appname>/ + add to apps/production/kustomization.yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-production
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/production
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: traefik
+    - name: cert-manager-issuers
+  timeout: 5m
+---
+# Private apps — always private regardless of environment (dashboard, internal tools)
+# Add new apps: create apps/private/<appname>/ + add to apps/private/kustomization.yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps-private
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./apps/private
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: traefik
+  timeout: 5m

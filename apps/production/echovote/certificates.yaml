@@ -1,0 +1,36 @@
+---
+# TLS certificate for EchoVote frontend subdomains.
+# cert-manager requests this from Let's Encrypt via HTTP-01 challenge.
+# HTTP-01 requires: port 80 reachable, Traefik kubernetesIngress enabled.
+#
+# IMPORTANT: Start with letsencrypt-staging to verify pipeline works.
+# Switch issuerRef.name to letsencrypt-prod once staging cert issues OK.
+# Rate limit: 50 prod certs/week — don't burn them on misconfiguration.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: echovote-tls
+  namespace: echovote
+spec:
+  secretName: echovote-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - chenar.space               # main domain → EchoVote (homepage placeholder)
+    - www.chenar.space           # www redirect
+    - echovote.chenar.space      # EchoVote frontend
+---
+# TLS certificate for EchoVote API subdomain.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: echovote-api-tls
+  namespace: echovote
+spec:
+  secretName: echovote-api-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - api.echovote.chenar.space  # EchoVote backend API + WebSocket

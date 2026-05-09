@@ -1,0 +1,30 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: echovote-server
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: echovote-server
+  # Match sha-<40-char-sha> tags pushed by CI
+  filterTags:
+    pattern: '^sha-[a-f0-9]{40}$'
+    extract: '$tag'
+  policy:
+    alphabetical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: echovote-client
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: echovote-client
+  filterTags:
+    pattern: '^sha-[a-f0-9]{40}$'
+    extract: '$tag'
+  policy:
+    alphabetical:
+      order: asc

@@ -1,0 +1,25 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageUpdateAutomation
+metadata:
+  name: echovote
+  namespace: flux-system
+spec:
+  interval: 5m
+  sourceRef:
+    # Points to HomeLab_chenar repo (the GitRepository Flux bootstrap creates)
+    kind: GitRepository
+    name: flux-system
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        name: flux-bot
+        email: flux@chenar.space
+      messageTemplate: "chore(images): update echovote images"
+    push:
+      branch: main
+  update:
+    strategy: Setters
+    path: ./apps/production/echovote

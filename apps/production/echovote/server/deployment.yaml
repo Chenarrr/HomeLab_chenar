@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echovote-server
+  namespace: echovote
+  labels:
+    app: echovote-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echovote-server
+  template:
+    metadata:
+      labels:
+        app: echovote-server
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: ghcr.io/chenarrr/echovote-server:sha-5358e37a78199e8fb8b630088b377f4f9670a9e6 # {"$imagepolicy": "flux-system:echovote-server"}
+          ports:
+            - containerPort: 3001
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: PORT
+              value: "3001"
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: echovote-secrets
+                  key: MONGO_URI
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: echovote-secrets
+                  key: JWT_SECRET
+            - name: YOUTUBE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: echovote-secrets
+                  key: YOUTUBE_API_KEY
+            - name: SUPER_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: echovote-secrets
+                  key: SUPER_ADMIN_KEY
+            - name: CLIENT_ORIGIN
+              valueFrom:
+                secretKeyRef:
+                  name: echovote-secrets
+                  key: CLIENT_ORIGIN
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: echovote-secrets
+                  key: REDIS_URL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: uploads
+              mountPath: /app/uploads
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: uploads
+          emptyDir: {}
