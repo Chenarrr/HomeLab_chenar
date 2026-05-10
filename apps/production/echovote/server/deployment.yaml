@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: server
-          image: ghcr.io/chenarrr/echovote-server:sha-5358e37a78199e8fb8b630088b377f4f9670a9e6 # {"$imagepolicy": "flux-system:echovote-server"}
+          image: ghcr.io/chenarrr/echovote-server:v1.0.1 # {"$imagepolicy": "flux-system:echovote-server"}
           ports:
             - containerPort: 3001
               protocol: TCP
