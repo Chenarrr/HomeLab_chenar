@@ -4,4 +4,5 @@ resources:
 - apps-kustomizations.yaml
 - gotk-components.yaml
 - gotk-sync.yaml
+- infra-kustomization.yaml
 - homelab-infra-kustomizations.yaml
