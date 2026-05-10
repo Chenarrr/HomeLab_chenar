@@ -1,7 +1,7 @@
 ---
-# ─── HTTP (port 80) — hostname-based only ─────────────────────────────────────
+# ─── HTTP (port 80) ───────────────────────────────────────────────────────────
 
-# Server paths
+# Server paths on HTTP
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -18,26 +18,7 @@ spec:
         - name: echovote-server
           port: 3001
 ---
-# Client SPA
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: echovote-client-http
-  namespace: echovote
-spec:
-  entryPoints:
-    - web
-  routes:
-    - match: Host(`echovote.chenar.space`) && !PathPrefix(`/.well-known/acme-challenge`)
-      kind: Rule
-      priority: 1
-      services:
-        - name: echovote-client
-          port: 80
----
-# ─── Middlewares ──────────────────────────────────────────────────────────────
-
-# HTTP → HTTPS redirect
+# HTTP → HTTPS redirect middleware
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -48,7 +29,7 @@ spec:
     scheme: https
     permanent: true
 ---
-# Hostname-based HTTP → HTTPS redirect
+# HTTP → HTTPS redirect (all other traffic)
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -58,19 +39,18 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`echovote.chenar.space`) && !PathPrefix(`/.well-known/acme-challenge`)
+    - match: Host(`echovote.chenar.space`)
       kind: Rule
-      priority: 20
+      priority: 1
       middlewares:
         - name: redirect-to-https
       services:
         - name: echovote-client
           port: 80
 ---
-# ─── HTTPS (port 443) — hostname-based ────────────────────────────────────────
-# TLS auto-issued by Traefik + Let's Encrypt
+# ─── HTTPS (port 443) ─────────────────────────────────────────────────────────
 
-# echovote.chenar.space → EchoVote frontend
+# echovote.chenar.space → EchoVote frontend (catch-all, priority 1)
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -82,8 +62,9 @@ spec:
   routes:
     - match: Host(`echovote.chenar.space`)
       kind: Rule
+      priority: 1
       services:
         - name: echovote-client
           port: 80
   tls:
-    secretName: echovote-tls
+    certResolver: letsencrypt-prod

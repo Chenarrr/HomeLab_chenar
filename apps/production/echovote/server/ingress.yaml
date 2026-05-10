@@ -1,7 +1,7 @@
 ---
 # HTTPS IngressRoute for EchoVote API + WebSocket
-# Routes echovote.chenar.space → echovote-server:3001
-# TLS auto-issued by Traefik + Let's Encrypt
+# Routes echovote.chenar.space/api|socket.io|health|uploads → echovote-server:3001
+# TLS cert issued by Traefik built-in ACME (letsencrypt-prod)
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -11,10 +11,11 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`echovote.chenar.space`)
+    - match: Host(`echovote.chenar.space`) && (PathPrefix(`/api`) || PathPrefix(`/socket.io`) || PathPrefix(`/health`) || PathPrefix(`/uploads`))
       kind: Rule
+      priority: 10
       services:
         - name: echovote-server
           port: 3001
   tls:
-    secretName: echovote-api-tls
+    certResolver: letsencrypt-prod
