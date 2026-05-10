@@ -20,6 +20,8 @@ spec:
   upgrade:
     crds: CreateReplace  # keep CRDs up to date
   values:
+    crds:
+      enabled: true
     # Resource requests — minimal for homelab
     resources:
       requests:
