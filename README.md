@@ -1,174 +1,156 @@
-# HomeLab Chenar
+<div align="center">
 
-**Domain:** `chenar.space` | **VPS:** Hetzner Cloud (`178.105.91.23`)  
-GitOps-managed Kubernetes homelab. Talos Linux + Flux CD + Traefik.
+# HomeLab — chenar.space
 
----
+**Self-hosted Kubernetes on Hetzner Cloud, GitOps-managed, zero secrets in git.**
 
-## Domain & Applications
+[![k3s](https://img.shields.io/badge/k3s-v1.32.4-F8A002?style=flat-square&logo=kubernetes&logoColor=white)](https://k3s.io)
+[![Flux CD](https://img.shields.io/badge/Flux_CD-v2-5468FF?style=flat-square&logo=flux&logoColor=white)](https://fluxcd.io)
+[![Cilium](https://img.shields.io/badge/Cilium-1.15.6-F8C517?style=flat-square&logo=cilium&logoColor=black)](https://cilium.io)
+[![Traefik](https://img.shields.io/badge/Traefik-v3-24A1C1?style=flat-square&logo=traefikproxy&logoColor=white)](https://traefik.io)
+[![Infisical](https://img.shields.io/badge/Secrets-Infisical-6B3FA0?style=flat-square)](https://infisical.com)
 
-| URL | Purpose | Authentication |
-|-----|---------|----------------|
-| `https://chenar.space` | Traefik Dashboard (private) | BasicAuth |
-| `https://infisical.chenar.space` | Infisical Secrets Manager (private) | Login |
-| `https://echovote.chenar.space` | EchoVote application | Public |
-| `https://<app>.chenar.space` | Future applications (auto-deploy) | Per-app |
-
-**DNS Configuration (Namecheap):**
-```
-A     @              178.105.91.23
-A     *              178.105.91.23
-```
+</div>
 
 ---
 
-## Architecture
+## Live
 
-**Scalable for unlimited applications:**
-1. Each application gets its own subdomain: `<app>.chenar.space`
-2. Flux watches application repositories and auto-deploys to Kubernetes
-3. Traefik routes traffic and handles SSL (Let's Encrypt)
-4. Add new application = add GitRepository + Kustomization to `flux-system/`
-
----
-
-## Cluster
-
-| Node | IP | Role | Specs | OS |
-|------|----|------|-------|----|
-| `ubuntu-8gb-homelab1` | `178.105.91.23` | Control Plane | CX33, 8GB, 80GB | Talos 1.13 |
-| `ubuntu-8gb-homelab2` | `178.104.119.245` | Worker | CX33, 8GB, 80GB | Talos 1.13 |
-
-**Kubernetes:** v1.32.0 | **kubectl context:** `admin@homelab-cluster`
+| URL | App | Namespace |
+|-----|-----|-----------|
+| [chenar.space](https://chenar.space) | Portfolio | `portfolio` |
+| [echovote.chenar.space](https://echovote.chenar.space) | EchoVote | `echovote` |
+| [echovote.dev.chenar.space](https://echovote.dev.chenar.space) | EchoVote Dev | `echovote-dev` |
+| [traefik.chenar.space](https://traefik.chenar.space) | Traefik Dashboard | `traefik` |
 
 ---
 
 ## Stack
 
-| Layer | Technology |
-|-------|------------|
-| OS | Talos Linux 1.13 (no SSH, managed via `talosctl`) |
-| Kubernetes | v1.32.0 |
-| CNI | Cilium (eBPF) + LoadBalancer (L2) |
-| Ingress | Traefik v3 (LoadBalancer on `178.105.91.23:80/443`) |
-| SSL | cert-manager + Let's Encrypt (auto-renewal) |
-| GitOps | Flux CD v2 (auto-sync every 1min) |
-| Secrets | Infisical (dashboard + auto-sync) |
-| Storage | local-path-provisioner v0.0.30 |
+| Layer | Technology | Notes |
+|-------|------------|-------|
+| OS | Ubuntu 24.04 | Hetzner Cloud VPS |
+| Kubernetes | k3s v1.32.4 | Lightweight, single binary |
+| CNI | Cilium 1.15.6 | eBPF networking, VXLAN overlay, LB IPAM |
+| Ingress | Traefik v3 | Automatic TLS, path-based routing |
+| TLS | Traefik ACME | Let's Encrypt HTTP-01 |
+| GitOps | Flux CD v2 | Image automation, Kustomize, auto-sync |
+| Secrets | Infisical Cloud | Kubernetes auth, syncs to cluster |
+| Provisioning | Ansible | Idempotent full-cluster setup |
 
 ---
 
-## Access
+## GitOps Flow
 
-| Service | URL | Notes |
-|---------|-----|-------|
-| Traefik Dashboard | `https://chenar.space` | BasicAuth protected |
-| Kubernetes API | `https://178.105.91.23:6443` | Restrict to your IP in Hetzner Firewall |
-| Talos API | `178.105.91.23:50000` | Restrict to your IP in Hetzner Firewall |
+```
+git push main
+     │
+     ├─► CI builds image
+     │         ├─► ghcr.io/chenarrr/app:dev-20260511120000
+     │         │        └─► Flux dev policy → echovote-dev namespace
+     │         └─► ghcr.io/chenarrr/app:sha-abc123
+     │
+git tag v1.2.3 && git push --tags
+     │
+     └─► ghcr.io/chenarrr/app:v1.2.3
+              └─► Flux prod policy → echovote namespace
+                       └─► Rolling update, zero downtime
+```
 
----
-
-## Deployed Applications
-
-| Application | Subdomain | Namespace | Repository |
-|-------------|-----------|-----------|------------|
-| EchoVote | `echovote.chenar.space` | `echovote` | [gitops-echovote](https://github.com/Chenarrr/gitops-echovote) |
-
----
-
-## Adding New Applications (Scalable Pattern)
-
-**For each new application:**
-
-1. **Create application GitOps repository** (e.g., `gitops-myapp`)
-   ```yaml
-   gitops-myapp/
-   ├── deployment.yaml
-   ├── service.yaml
-   ├── ingressroute.yaml  # Points to myapp.chenar.space
-   └── kustomization.yaml
-   ```
-
-2. **Add to HomeLab_chenar:**
-   ```bash
-   # In flux-system/flux-system/
-   # Create myapp-source.yaml
-   apiVersion: source.toolkit.fluxcd.io/v1
-   kind: GitRepository
-   metadata:
-     name: myapp
-     namespace: flux-system
-   spec:
-     interval: 1m
-     url: https://github.com/Chenarrr/gitops-myapp
-     ref:
-       branch: main
-   
-   # Create myapp-kustomization.yaml
-   apiVersion: kustomize.toolkit.fluxcd.io/v1
-   kind: Kustomization
-   metadata:
-     name: myapp
-     namespace: flux-system
-   spec:
-     interval: 1m
-     sourceRef:
-       kind: GitRepository
-       name: myapp
-     path: ./
-     prune: true
-   ```
-
-3. **Reference in `flux-system/flux-system/kustomization.yaml`**
-4. **Commit and push** - Flux auto-deploys to `myapp.chenar.space`
-
-**Scales to 50+ applications** - repeat this pattern for each application.
+Flux commits the updated image tag back to this repo — no manual deploys.
 
 ---
 
-## Management Commands
+## Repository Structure
 
-```bash
-# Cluster health
-kubectl get nodes
-flux get all -A
-
-# Force sync all applications
-flux reconcile source git flux-system
-flux reconcile kustomization flux-system
-
-# Check Traefik routes
-kubectl get ingressroutes -A
-
-# View SSL certificates
-kubectl get certificates -A
-
-# Logs
-kubectl logs -n traefik -l app.kubernetes.io/name=traefik
-kubectl logs -n cert-manager -l app=cert-manager
+```
+HomeLab_chenar/
+├── apps/
+│   ├── production/
+│   │   ├── echovote/          # Production app manifests
+│   │   └── portfolio/         # Portfolio site
+│   ├── dev/
+│   │   └── echovote/          # Dev — auto-deploys on every push
+│   └── private/
+│       └── ...                # Internal tooling
+├── infrastructure/
+│   ├── cilium-lb/             # LoadBalancer IP pool
+│   ├── cert-manager/
+│   ├── cert-manager-issuers/
+│   └── traefik/
+└── clusters/
+    └── vps-k3s/
+        └── flux-system/       # Flux bootstrap + Kustomizations
 ```
 
 ---
 
-## Security
+## Secrets
 
-- **No SSH** - Talos managed via `talosctl` (port 50000, mTLS)
-- **Firewall** - Restrict ports 50000 & 6443 to your IP only
-- **SSL** - Auto-renewed Let's Encrypt certificates
-- **Dashboard** - BasicAuth protected
-- **Secrets** - Managed with Infisical (see [SECRETS.md](./SECRETS.md))
+Zero secrets in git. Everything lives in Infisical Cloud and syncs automatically via Kubernetes auth.
 
-**All secrets in one dashboard. Auto-sync to cluster. No manual kubectl commands.**
+```
+Infisical Cloud
+      │  Kubernetes Auth (TokenReview API)
+      ▼
+InfisicalSecret CRD ──► k8s Secret ──► Pod env vars
+```
+
+| Infisical Path | Environment | Secret Name | Namespace |
+|----------------|-------------|-------------|-----------|
+| `/echovote` | prod | `echovote-secrets` | `echovote` |
+| `/echovote` | dev | `echovote-secrets` | `echovote-dev` |
+| `/echovote-mongo` | prod/dev | `mongo-helm-values` | both |
+| `/echovote-redis` | prod/dev | `redis-helm-values` | both |
+| `/flux` | prod | `echovote-ghcr-auth` | `flux-system` |
 
 ---
 
-## DNS Configuration (Namecheap)
+## Operations
 
-Go to `chenar.space` → Advanced DNS:
+```bash
+# SSH
+ssh -i ~/.ssh/id_ed25519_homelab root@178.105.91.23    # Control Plane
+ssh -i ~/.ssh/id_ed25519_homelab root@178.104.119.245  # Worker
 
-| Type | Host | Value | TTL |
-|------|------|-------|-----|
-| A | @ | 178.105.91.23 | Automatic |
-| A | * | 178.105.91.23 | Automatic |
+# Cluster health
+kubectl get nodes
+kubectl get pods -A
+flux get all -A
 
-**Propagation:** 5-30 minutes. Check with `dig chenar.space`
+# Force sync
+flux reconcile source git flux-system
+flux reconcile kustomization apps-production --with-source
+
+# Infisical sync status
+kubectl get infisicalsecrets -A
+```
+
+---
+
+## Adding a New App
+
+```bash
+# 1. Create manifests
+mkdir -p apps/production/myapp
+# namespace.yaml, deployment.yaml, service.yaml, ingress.yaml, kustomization.yaml
+
+# 2. Register
+echo "  - myapp" >> apps/production/kustomization.yaml
+
+# 3. Push — Flux reconciles automatically
+git push origin main
+```
+
+> DNS wildcard `*.chenar.space` already points to Traefik — no DNS changes needed.
+
+---
+
+## DNS
+
+| Type | Host | Value |
+|------|------|-------|
+| A | `@` | `178.105.91.23` |
+| A | `*` | `178.105.91.23` |
+| A | `*.dev` | `178.105.91.23` |
+| CNAME | `www` | `chenar.space.` |
