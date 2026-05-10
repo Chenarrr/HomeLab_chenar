@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: portfolio
-          image: ghcr.io/chenarrr/portfolio:latest # {"$imagepolicy": "flux-system:portfolio"}
+          image: ghcr.io/chenarrr/portfolio:v1.0.4 # {"$imagepolicy": "flux-system:portfolio"}
           ports:
             - containerPort: 80
           securityContext:
