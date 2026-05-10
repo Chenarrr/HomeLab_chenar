@@ -1,0 +1,8 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: portfolio
+  namespace: flux-system
+spec:
+  image: ghcr.io/chenarrr/portfolio
+  interval: 5m
