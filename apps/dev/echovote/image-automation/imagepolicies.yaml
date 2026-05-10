@@ -1,0 +1,30 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: echovote-server-dev
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: echovote-server
+  # dev-YYYYMMDDHHMMSS — alphabetical order picks latest push
+  filterTags:
+    pattern: '^dev-(?P<ts>\d+)$'
+    extract: '$ts'
+  policy:
+    alphabetical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: echovote-client-dev
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: echovote-client
+  filterTags:
+    pattern: '^dev-(?P<ts>\d+)$'
+    extract: '$ts'
+  policy:
+    alphabetical:
+      order: asc

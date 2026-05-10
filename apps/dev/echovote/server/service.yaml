@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: echovote-server
+  namespace: echovote-dev
+spec:
+  selector:
+    app: echovote-server
+  ports:
+    - name: http
+      port: 3001
+      targetPort: 3001
