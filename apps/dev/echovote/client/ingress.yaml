@@ -19,7 +19,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`dev.echovote.chenar.space`)
+    - match: Host(`echovote.dev.chenar.space`)
       kind: Rule
       priority: 1
       middlewares:
@@ -38,7 +38,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`dev.echovote.chenar.space`) && (PathPrefix(`/api`) || PathPrefix(`/socket.io`) || PathPrefix(`/health`) || PathPrefix(`/uploads`))
+    - match: Host(`echovote.dev.chenar.space`) && (PathPrefix(`/api`) || PathPrefix(`/socket.io`) || PathPrefix(`/health`) || PathPrefix(`/uploads`))
       kind: Rule
       priority: 10
       services:
@@ -57,7 +57,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`dev.echovote.chenar.space`)
+    - match: Host(`echovote.dev.chenar.space`)
       kind: Rule
       priority: 1
       services:
