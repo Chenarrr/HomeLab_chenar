@@ -6,6 +6,8 @@ resources:
   - certificates.yaml
   - secrets/echovote-secrets.yaml
   - secrets/ghcr-pull-secret.yaml
+  - secrets/mongo-secrets.yaml
+  - secrets/redis-secrets.yaml
   - infrastructure/mongodb.yaml
   - infrastructure/redis.yaml
   - server/deployment.yaml
