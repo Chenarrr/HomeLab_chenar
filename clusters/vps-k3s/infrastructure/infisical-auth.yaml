@@ -27,6 +27,9 @@ subjects:
   - kind: ServiceAccount
     name: infisical-token-reviewer
     namespace: default
+  - kind: ServiceAccount
+    name: infisical-service-account
+    namespace: default
 ---
 apiVersion: v1
 kind: ServiceAccount
