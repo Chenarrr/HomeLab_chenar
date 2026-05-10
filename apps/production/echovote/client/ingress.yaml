@@ -86,4 +86,4 @@ spec:
         - name: echovote-client
           port: 80
   tls:
-    certResolver: letsencrypt-prod
+    secretName: echovote-tls

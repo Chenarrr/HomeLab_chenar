@@ -17,4 +17,4 @@ spec:
         - name: echovote-server
           port: 3001
   tls:
-    certResolver: letsencrypt-prod
+    secretName: echovote-api-tls
