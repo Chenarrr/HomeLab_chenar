@@ -70,6 +70,26 @@ spec:
       ports:
         - port: 27017
 ---
+# Allow mongo-express (private tools) → mongo (port 27017)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mongo-express-to-mongo
+  namespace: echovote
+spec:
+  podSelector:
+    matchLabels:
+      app: mongo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mongo-express
+      ports:
+        - port: 27017
+---
 # Allow echovote-server → redis (port 6379)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
