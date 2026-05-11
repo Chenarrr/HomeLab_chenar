@@ -1,0 +1,65 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: rancher
+  namespace: cattle-system
+spec:
+  interval: 10m
+  releaseName: rancher
+  chart:
+    spec:
+      chart: rancher
+      version: "2.10.*"
+      sourceRef:
+        kind: HelmRepository
+        name: rancher-stable
+        namespace: cattle-system
+  install:
+    crds: CreateReplace
+    timeout: 10m
+  upgrade:
+    crds: CreateReplace
+    timeout: 10m
+  values:
+    # Public hostname — Traefik routes here
+    hostname: rancher.chenar.space
+
+    # Initial admin password — CHANGE on first login
+    bootstrapPassword: "RancherHomeLab2026!"
+
+    # Disable built-in nginx Ingress — Traefik handles TLS + routing
+    ingress:
+      enabled: false
+
+    # External TLS termination (Traefik does HTTPS, Rancher pod speaks HTTP)
+    tls: external
+
+    # Single replica for single-node homelab
+    replicas: 1
+    antiAffinity: preferred
+
+    # Schedule on control-plane node (worker is tight on resources)
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: "true"
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+
+    # Modest resources — fits alongside k3s control plane on CX33
+    resources:
+      requests:
+        cpu: 250m
+        memory: 768Mi
+      limits:
+        cpu: 1500m
+        memory: 2560Mi
+
+    # Disable telemetry / auditing for lean install
+    auditLog:
+      level: 0
+    rancherMetrics:
+      enabled: false
