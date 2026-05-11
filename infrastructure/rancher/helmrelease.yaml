@@ -9,10 +9,10 @@ spec:
   chart:
     spec:
       chart: rancher
-      version: "2.10.*"
+      version: "2.14.*"
       sourceRef:
         kind: HelmRepository
-        name: rancher-stable
+        name: rancher-latest
         namespace: cattle-system
   install:
     crds: CreateReplace
