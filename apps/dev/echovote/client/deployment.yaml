@@ -6,7 +6,7 @@ metadata:
   labels:
     app: echovote-client
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: echovote-client

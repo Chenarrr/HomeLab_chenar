@@ -7,7 +7,8 @@
 [![k3s](https://img.shields.io/badge/k3s-v1.32.4-F8A002?style=flat-square&logo=kubernetes&logoColor=white)](https://k3s.io)
 [![Flux CD](https://img.shields.io/badge/Flux_CD-v2-5468FF?style=flat-square&logo=flux&logoColor=white)](https://fluxcd.io)
 [![Cilium](https://img.shields.io/badge/Cilium-1.15.6-F8C517?style=flat-square&logo=cilium&logoColor=black)](https://cilium.io)
-[![Traefik](https://img.shields.io/badge/Traefik-v3-24A1C1?style=flat-square&logo=traefikproxy&logoColor=white)](https://traefik.io)
+[![Traefik](https://img.shields.io/badge/Traefik-v3.7-24A1C1?style=flat-square&logo=traefikproxy&logoColor=white)](https://traefik.io)
+[![Rancher](https://img.shields.io/badge/Rancher-2.14-0075A8?style=flat-square&logo=rancher&logoColor=white)](https://rancher.com)
 [![Infisical](https://img.shields.io/badge/Secrets-Infisical-6B3FA0?style=flat-square)](https://infisical.com)
 
 </div>
@@ -16,12 +17,13 @@
 
 ## Live
 
-| URL | App | Namespace |
-|-----|-----|-----------|
-| [chenar.space](https://chenar.space) | Portfolio | `portfolio` |
-| [echovote.chenar.space](https://echovote.chenar.space) | EchoVote | `echovote` |
-| [echovote.dev.chenar.space](https://echovote.dev.chenar.space) | EchoVote Dev | `echovote-dev` |
-| [traefik.chenar.space](https://traefik.chenar.space) | Traefik Dashboard | `traefik` |
+| URL | App | Access |
+|-----|-----|--------|
+| [chenar.space](https://chenar.space) | Portfolio | Public |
+| [echovote.chenar.space](https://echovote.chenar.space) | EchoVote | Public |
+| [echovote.dev.chenar.space](https://echovote.dev.chenar.space) | EchoVote Dev | Private — IP restricted |
+| [rancher.chenar.space](https://rancher.chenar.space) | Rancher | Private — IP restricted |
+| [traefik.chenar.space](https://traefik.chenar.space) | Traefik Dashboard | Private — IP restricted |
 
 ---
 
@@ -32,10 +34,11 @@
 | OS | Ubuntu 24.04 | Hetzner Cloud VPS |
 | Kubernetes | k3s v1.32.4 | Lightweight, single binary |
 | CNI | Cilium 1.15.6 | eBPF networking, VXLAN overlay, LB IPAM |
-| Ingress | Traefik v3 | Automatic TLS, path-based routing |
-| TLS | Traefik ACME | Let's Encrypt HTTP-01 |
-| GitOps | Flux CD v2 | Image automation, Kustomize, auto-sync |
-| Secrets | Infisical Cloud | Kubernetes auth, syncs to cluster |
+| Ingress | Traefik v3.7 | Automatic TLS, ACME HTTP-01, persistent cert storage |
+| TLS | Let's Encrypt | Per-domain certs, stored in PVC (survives restarts) |
+| GitOps | Flux CD v2 | 1m pull interval, autonomous reconciliation |
+| Cluster UI | Rancher 2.14 | Runs on control-plane, private access only |
+| Secrets | Infisical Cloud | Kubernetes auth, syncs to cluster — nothing in git |
 | Provisioning | Ansible | Idempotent full-cluster setup |
 
 ---
@@ -47,7 +50,7 @@ git push main
      │
      ├─► CI builds image
      │         ├─► ghcr.io/chenarrr/app:dev-20260511120000
-     │         │        └─► Flux dev policy → echovote-dev namespace
+     │         │        └─► Flux dev policy → echovote-dev (scaled to 0 by default)
      │         └─► ghcr.io/chenarrr/app:sha-abc123
      │
 git tag v1.2.3 && git push --tags
@@ -57,7 +60,7 @@ git tag v1.2.3 && git push --tags
                        └─► Rolling update, zero downtime
 ```
 
-Flux commits the updated image tag back to this repo — no manual deploys.
+Flux reconciles every 1m — no manual deploys needed.
 
 ---
 
@@ -67,21 +70,28 @@ Flux commits the updated image tag back to this repo — no manual deploys.
 HomeLab_chenar/
 ├── apps/
 │   ├── production/
-│   │   ├── echovote/          # Production app manifests
-│   │   └── portfolio/         # Portfolio site
+│   │   ├── echovote/          # Production app (public)
+│   │   └── portfolio/         # Portfolio site (public)
 │   ├── dev/
-│   │   └── echovote/          # Dev — auto-deploys on every push
+│   │   └── echovote/          # Dev — IP-restricted, scaled to 0 when idle
 │   └── private/
 │       └── ...                # Internal tooling
 ├── infrastructure/
 │   ├── cilium-lb/             # LoadBalancer IP pool
-│   ├── cert-manager/
+│   ├── cert-manager/          # TLS cert issuer
 │   ├── cert-manager-issuers/
-│   └── traefik/
+│   ├── traefik/               # Ingress, ACME, IP allowlist middleware
+│   └── rancher/               # Cluster management UI (private)
 └── clusters/
     └── vps-k3s/
         └── flux-system/       # Flux bootstrap + Kustomizations
 ```
+
+---
+
+## Access Control
+
+Private services use Traefik `IPAllowList` middleware — all traffic from unlisted IPs gets 403 before reaching the app. Defined once in `infrastructure/traefik/private-access-middleware.yaml`, referenced by any IngressRoute that needs it.
 
 ---
 
@@ -93,16 +103,16 @@ Zero secrets in git. Everything lives in Infisical Cloud and syncs automatically
 Infisical Cloud
       │  Kubernetes Auth (TokenReview API)
       ▼
-InfisicalSecret CRD ──► k8s Secret ──► Pod env vars
+InfisicalSecret CRD ──► k8s Secret ──► Pod env vars / Helm values
 ```
 
-| Infisical Path | Environment | Secret Name | Namespace |
-|----------------|-------------|-------------|-----------|
-| `/echovote` | prod | `echovote-secrets` | `echovote` |
-| `/echovote` | dev | `echovote-secrets` | `echovote-dev` |
-| `/echovote-mongo` | prod/dev | `mongo-helm-values` | both |
-| `/echovote-redis` | prod/dev | `redis-helm-values` | both |
-| `/flux` | prod | `echovote-ghcr-auth` | `flux-system` |
+| Infisical Path | Used by |
+|----------------|---------|
+| `/echovote` | App secrets + GHCR pull |
+| `/echovote-mongo` | MongoDB credentials |
+| `/echovote-redis` | Redis credentials |
+| `/flux` | Flux image pull secret |
+| `/rancher` | Rancher bootstrap password |
 
 ---
 
@@ -110,20 +120,20 @@ InfisicalSecret CRD ──► k8s Secret ──► Pod env vars
 
 ```bash
 # SSH
-ssh -i ~/.ssh/id_ed25519_homelab root@178.105.91.23    # Control Plane
-ssh -i ~/.ssh/id_ed25519_homelab root@178.104.119.245  # Worker
+ssh homelab    # Control plane (178.105.91.23)
 
 # Cluster health
 kubectl get nodes
 kubectl get pods -A
 flux get all -A
 
+# Scale dev up/down
+kubectl -n echovote-dev scale deploy --all --replicas=1   # start dev
+kubectl -n echovote-dev scale deploy --all --replicas=0   # stop dev
+
 # Force sync
 flux reconcile source git flux-system
 flux reconcile kustomization apps-production --with-source
-
-# Infisical sync status
-kubectl get infisicalsecrets -A
 ```
 
 ---
@@ -138,11 +148,11 @@ mkdir -p apps/production/myapp
 # 2. Register
 echo "  - myapp" >> apps/production/kustomization.yaml
 
-# 3. Push — Flux reconciles automatically
+# 3. Push — Flux reconciles automatically within 1m
 git push origin main
 ```
 
-> DNS wildcard `*.chenar.space` already points to Traefik — no DNS changes needed.
+> DNS wildcard `*.chenar.space` already points to Traefik — no DNS changes needed for new subdomains.
 
 ---
 

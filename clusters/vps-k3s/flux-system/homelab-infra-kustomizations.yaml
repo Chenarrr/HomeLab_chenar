@@ -96,4 +96,4 @@ spec:
       kind: HelmRelease
       name: rancher
       namespace: cattle-system
-  timeout: 15m
+  timeout: 5m

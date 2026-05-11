@@ -17,15 +17,21 @@ spec:
   install:
     crds: CreateReplace
     timeout: 10m
+    remediation:
+      retries: -1
   upgrade:
     crds: CreateReplace
     timeout: 10m
+    remediation:
+      retries: -1
+  valuesFrom:
+    - kind: Secret
+      name: rancher-bootstrap-secret
+      valuesKey: bootstrapPassword
+      targetPath: bootstrapPassword
   values:
     # Public hostname — Traefik routes here
     hostname: rancher.chenar.space
-
-    # Initial admin password — CHANGE on first login
-    bootstrapPassword: "RancherHomeLab2026!"
 
     # Disable built-in nginx Ingress — Traefik handles TLS + routing
     ingress:

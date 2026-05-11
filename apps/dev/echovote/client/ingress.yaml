@@ -41,6 +41,9 @@ spec:
     - match: Host(`echovote.dev.chenar.space`) && (PathPrefix(`/api`) || PathPrefix(`/socket.io`) || PathPrefix(`/health`) || PathPrefix(`/uploads`))
       kind: Rule
       priority: 10
+      middlewares:
+        - name: private-access
+          namespace: traefik
       services:
         - name: echovote-server
           port: 3001
@@ -60,6 +63,9 @@ spec:
     - match: Host(`echovote.dev.chenar.space`)
       kind: Rule
       priority: 1
+      middlewares:
+        - name: private-access
+          namespace: traefik
       services:
         - name: echovote-client
           port: 80

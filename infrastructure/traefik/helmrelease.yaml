@@ -55,6 +55,11 @@ spec:
       dashboard: true
       insecure: true
 
+    persistence:
+      enabled: true
+      size: 128Mi
+      path: /data
+
     additionalArguments:
       - "--api.insecure=true"
       - "--certificatesresolvers.letsencrypt-prod.acme.email=chenar.breshk@gmail.com"
