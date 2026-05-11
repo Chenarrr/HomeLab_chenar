@@ -24,6 +24,7 @@
 | [echovote.dev.chenar.space](https://echovote.dev.chenar.space) | EchoVote Dev | Private — IP restricted |
 | [rancher.chenar.space](https://rancher.chenar.space) | Rancher | Private — IP restricted |
 | [traefik.chenar.space](https://traefik.chenar.space) | Traefik Dashboard | Private — IP restricted |
+| [mongo.chenar.space](https://mongo.chenar.space) | MongoDB UI (mongo-express) | Private — IP restricted |
 
 ---
 
@@ -36,7 +37,7 @@
 | CNI | Cilium 1.15.6 | eBPF networking, VXLAN overlay, LB IPAM |
 | Ingress | Traefik v3.7 | Automatic TLS, ACME HTTP-01, persistent cert storage |
 | TLS | Let's Encrypt | Per-domain certs, stored in PVC (survives restarts) |
-| GitOps | Flux CD v2 | 1m pull interval, autonomous reconciliation |
+| GitOps | Flux CD v2 | Instant reconcile on push via GitHub webhook |
 | Cluster UI | Rancher 2.14 | Runs on control-plane, private access only |
 | Secrets | Infisical Cloud | Kubernetes auth, syncs to cluster — nothing in git |
 | Provisioning | Ansible | Idempotent full-cluster setup |
@@ -47,6 +48,8 @@
 
 ```
 git push main
+     │
+     ├─► GitHub webhook → webhook.chenar.space → Flux reconciles instantly
      │
      ├─► CI builds image
      │         ├─► ghcr.io/chenarrr/app:dev-20260511120000
@@ -60,7 +63,7 @@ git tag v1.2.3 && git push --tags
                        └─► Rolling update, zero downtime
 ```
 
-Flux reconciles every 1m — no manual deploys needed.
+Every `git push` triggers instant Flux reconcile via GitHub webhook — no polling, no manual deploys.
 
 ---
 
@@ -75,7 +78,7 @@ HomeLab_chenar/
 │   ├── dev/
 │   │   └── echovote/          # Dev — IP-restricted, scaled to 0 when idle
 │   └── private/
-│       └── ...                # Internal tooling
+│       └── mongo-express/     # MongoDB UI — IP-restricted
 ├── infrastructure/
 │   ├── cilium-lb/             # LoadBalancer IP pool
 │   ├── cert-manager/          # TLS cert issuer
@@ -111,8 +114,9 @@ InfisicalSecret CRD ──► k8s Secret ──► Pod env vars / Helm values
 | `/echovote` | App secrets + GHCR pull |
 | `/echovote-mongo` | MongoDB credentials |
 | `/echovote-redis` | Redis credentials |
-| `/flux` | Flux image pull secret |
+| `/flux` | Flux image pull secret + GitHub webhook token |
 | `/rancher` | Rancher bootstrap password |
+| `/mongo-express` | mongo-express auth + MongoDB URL |
 
 ---
 
@@ -131,7 +135,7 @@ flux get all -A
 kubectl -n echovote-dev scale deploy --all --replicas=1   # start dev
 kubectl -n echovote-dev scale deploy --all --replicas=0   # stop dev
 
-# Force sync
+# Force sync (normally not needed — webhook handles it)
 flux reconcile source git flux-system
 flux reconcile kustomization apps-production --with-source
 ```
