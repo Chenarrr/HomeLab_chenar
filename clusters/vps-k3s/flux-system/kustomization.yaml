@@ -6,3 +6,6 @@ resources:
 - gotk-sync.yaml
 - infra-kustomization.yaml
 - homelab-infra-kustomizations.yaml
+- webhook-secret.yaml
+- webhook-receiver.yaml
+- webhook-ingressroute.yaml
