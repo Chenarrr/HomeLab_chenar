@@ -6,7 +6,7 @@ metadata:
   name: cilium-lb
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 2m
   path: ./infrastructure/cilium-lb
   prune: true
   sourceRef:
@@ -20,7 +20,7 @@ metadata:
   name: cert-manager
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 2m
   path: ./infrastructure/cert-manager
   prune: true
   wait: true
@@ -41,7 +41,7 @@ metadata:
   name: cert-manager-issuers
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 2m
   path: ./infrastructure/cert-manager-issuers
   prune: true
   sourceRef:
@@ -57,7 +57,7 @@ metadata:
   name: traefik
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 2m
   path: ./infrastructure/traefik
   prune: true
   wait: true
@@ -82,7 +82,7 @@ metadata:
   name: rancher
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 2m
   path: ./infrastructure/rancher
   prune: true
   sourceRef:

@@ -7,7 +7,7 @@ metadata:
   name: apps-production
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 2m
   path: ./apps/production
   prune: true
   sourceRef:
@@ -26,7 +26,7 @@ metadata:
   name: apps-private
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 2m
   path: ./apps/private
   prune: true
   sourceRef:
@@ -44,7 +44,7 @@ metadata:
   name: apps-dev
   namespace: flux-system
 spec:
-  interval: 10m
+  interval: 2m
   path: ./apps/dev
   prune: true
   sourceRef:
