@@ -25,6 +25,8 @@ spec:
     # NodePort is kept as a fallback for direct IP access during DNS propagation.
     service:
       type: LoadBalancer
+      spec:
+        externalTrafficPolicy: Local
       labels:
         cilium-lb-pool: homelab   # matches the CiliumLoadBalancerIPPool serviceSelector
 
@@ -76,6 +78,14 @@ spec:
         level: INFO
       access:
         enabled: true
+
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: "true"
+
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
 
     providers:
       # IngressRoute CRDs — primary routing (cross-namespace for echovote)
