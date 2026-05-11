@@ -1,0 +1,19 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: mongo-express
+  namespace: mongo-express
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`mongo.chenar.space`)
+      kind: Rule
+      middlewares:
+        - name: private-access
+          namespace: traefik
+      services:
+        - name: mongo-express
+          port: 8081
+  tls:
+    certResolver: letsencrypt-prod
