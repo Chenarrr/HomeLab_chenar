@@ -17,7 +17,7 @@ metadata:
   name: redis
   namespace: echovote
 spec:
-  interval: 1m
+  interval: 2m
   chart:
     spec:
       chart: redis
