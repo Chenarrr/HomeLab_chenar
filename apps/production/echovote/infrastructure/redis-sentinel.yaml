@@ -1,0 +1,74 @@
+---
+# Bitnami HelmRepository — add once, reusable for other Bitnami charts
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: bitnami
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://charts.bitnami.com/bitnami
+---
+# Redis with Sentinel — HA, auto-failover, quorum-based
+# Service name stays "redis-master:6379" — compatible with existing app connection string
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: redis
+  namespace: echovote
+spec:
+  interval: 2m
+  chart:
+    spec:
+      chart: redis
+      version: ">=20.0.0 <21.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: bitnami
+        namespace: flux-system
+      interval: 1h
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    remediation:
+      retries: -1
+  values:
+    architecture: replication
+
+    auth:
+      enabled: true
+      existingSecret: redis-helm-values
+      existingSecretPasswordKey: password
+
+    sentinel:
+      enabled: true
+      quorum: 2 # prod — quorum majority of 3 sentinels
+      #3 pods, 1 master, 2 replicas, 3 sentinel 
+    master:
+      count: 1
+      persistence:
+        enabled: true
+        storageClass: local-path
+        size: 2Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+
+    replica:
+      replicaCount: 2
+      persistence:
+        enabled: true
+        storageClass: local-path
+        size: 2Gi # prod — persist replicas too
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
