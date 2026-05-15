@@ -37,6 +37,8 @@ spec:
   values:
     global:
       imageRegistry: registry.bitnami.com
+      security:
+        allowInsecureImages: true
 
     architecture: replication
 
