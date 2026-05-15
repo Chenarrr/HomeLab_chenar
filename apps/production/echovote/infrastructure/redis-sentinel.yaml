@@ -6,8 +6,9 @@ metadata:
   name: bitnami
   namespace: flux-system
 spec:
+  type: oci
   interval: 1h
-  url: https://charts.bitnami.com/bitnami
+  url: oci://registry-1.docker.io/bitnamicharts
 ---
 # Redis with Sentinel — HA, auto-failover, quorum-based
 # Service name stays "redis-master:6379" — compatible with existing app connection string
