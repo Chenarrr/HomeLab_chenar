@@ -35,6 +35,9 @@ spec:
     remediation:
       retries: -1
   values:
+    global:
+      imageRegistry: registry.bitnami.com
+
     architecture: replication
 
     auth:
