@@ -36,9 +36,13 @@ spec:
       retries: -1
   values:
     global:
-      imageRegistry: registry.bitnami.com
+      imageRegistry: docker.io
       security:
         allowInsecureImages: true
+
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/redis
 
     architecture: replication
 
@@ -50,7 +54,10 @@ spec:
     sentinel:
       enabled: true
       quorum: 2 # prod — quorum majority of 3 sentinels
-      #3 pods, 1 master, 2 replicas, 3 sentinel 
+      #3 pods, 1 master, 2 replicas, 3 sentinel
+      image:
+        registry: docker.io
+        repository: bitnamilegacy/redis-sentinel
     master:
       count: 1
       persistence:
