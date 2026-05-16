@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - network-policies.yaml
+  - serviceaccount.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml

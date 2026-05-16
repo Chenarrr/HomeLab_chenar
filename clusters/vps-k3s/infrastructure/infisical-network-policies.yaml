@@ -1,0 +1,12 @@
+---
+# Default: deny all ingress in infisical-system namespace
+# Operator only needs egress (Infisical Cloud + k8s API); nothing should reach in.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: infisical-system
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

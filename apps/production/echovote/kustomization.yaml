@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - network-policies.yaml
+  - serviceaccounts.yaml
   - secrets/echovote-secrets.yaml
   - secrets/ghcr-pull-secret.yaml
   - secrets/mongo-secrets.yaml

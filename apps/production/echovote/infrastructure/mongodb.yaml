@@ -53,6 +53,8 @@ spec:
       labels:
         app: mongo
     spec:
+      serviceAccountName: mongo
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 999    # mongodb user in official image

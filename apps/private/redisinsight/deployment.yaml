@@ -13,6 +13,8 @@ spec:
       labels:
         app: redisinsight
     spec:
+      serviceAccountName: redisinsight
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

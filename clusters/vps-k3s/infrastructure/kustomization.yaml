@@ -3,5 +3,6 @@ kind: Kustomization
 resources:
   - infisical-operator.yaml
   - infisical-auth.yaml
+  - infisical-network-policies.yaml
   # Enable after you create Infisical Kubernetes Auth / Machine Identity:
   # - app-secrets.yaml

@@ -13,6 +13,8 @@ spec:
       labels:
         app: mongo-express
     spec:
+      serviceAccountName: mongo-express
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
