@@ -1,0 +1,60 @@
+---
+# Opstree Redis Operator - RedisSentinel CRD
+# This creates a new Redis Sentinel cluster alongside the existing Bitnami one
+# Service names: echovote-redis-v2:6379 and echovote-redis-v2-sentinel:26379
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisSentinel
+metadata:
+  name: echovote-redis-v2
+  namespace: echovote
+spec:
+  # Cluster size: 3 Redis nodes (1 master + 2 replicas) + 3 Sentinel nodes
+  clusterSize: 3
+  
+  # Sentinel configuration
+  redisSentinelConfig:
+    # Sentinel service will be: echovote-redis-v2-sentinel:26379
+    redisReplicationName: mymaster  # Must match Bitnami's master name for compatibility
+    quorum: "2"  # 2 out of 3 sentinels must agree for failover
+    downAfterMilliseconds: "5000"
+    failoverTimeout: "10000"
+    parallelSyncs: "1"
+  
+  # Use existing password secret from Bitnami (same secret, same key)
+  kubernetesConfig:
+    existingPasswordSecret:
+      name: redis-helm-values
+      key: password
+    
+    # Resource limits for Redis pods
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+    
+    # Image configuration
+    image: quay.io/opstree/redis:v7.0.15
+    imagePullPolicy: IfNotPresent
+  
+  # Storage configuration - matches Bitnami setup
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 2Gi
+  
+  # Pod security and scheduling
+  podSecurityContext:
+    runAsUser: 1000
+    fsGroup: 1000
+  
+  securityContext:
+    runAsUser: 1000
+    runAsNonRoot: true

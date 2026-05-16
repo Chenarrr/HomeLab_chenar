@@ -91,6 +91,7 @@ spec:
         - port: 27017
 ---
 # Allow echovote-server → redis (port 6379)
+# FIXED: Using correct Bitnami label
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -99,7 +100,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: redis
+      app.kubernetes.io/name: redis
   policyTypes:
     - Ingress
   ingress:
@@ -111,6 +112,7 @@ spec:
         - port: 6379
 ---
 # Allow redisinsight → redis (port 6379 + 26379 sentinel)
+# FIXED: Using correct Bitnami label
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -119,7 +121,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: redis
+      app.kubernetes.io/name: redis
   policyTypes:
     - Ingress
   ingress:

@@ -2,3 +2,16 @@ SECRETS.md
 CLAUDE.md
 CLAUDE.local.md
 *.local.md
+
+# Redis migration files - contain passwords and IPs
+START-HERE.md
+MIGRATION-NOTES.md
+REDIS-MIGRATION-GUIDE.md
+MIGRATION-QUICK-REFERENCE.md
+MIGRATION-SUMMARY.md
+MIGRATION-CHECKLIST.md
+REDIS-CACHE-KEY-GUIDE.md
+README-MIGRATION.md
+
+# Network policy fixes - temporary
+network-policies-FIXED.yaml

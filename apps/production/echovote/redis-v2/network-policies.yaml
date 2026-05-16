@@ -1,0 +1,109 @@
+---
+# Allow echovote-server → echovote-redis-v2 (port 6379)
+# This enables the app to connect to the new Redis after cutover
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-server-to-redis-v2
+  namespace: echovote
+spec:
+  podSelector:
+    matchLabels:
+      redis_setup_type: sentinel  # Opstree operator label
+      app: echovote-redis-v2
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: echovote-server
+      ports:
+        - port: 6379
+---
+# Allow redisinsight → echovote-redis-v2 (port 6379 + 26379 sentinel)
+# This lets you inspect the new Redis during migration
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redisinsight-to-redis-v2
+  namespace: echovote
+spec:
+  podSelector:
+    matchLabels:
+      redis_setup_type: sentinel
+      app: echovote-redis-v2
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: redisinsight
+      ports:
+        - port: 6379
+        - port: 26379
+---
+# Allow RedisShake → Bitnami Redis (for live sync source)
+# RedisShake needs to read from Bitnami master
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redisshake-to-bitnami-redis
+  namespace: echovote
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis  # Bitnami label
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: redis-shake
+      ports:
+        - port: 6379
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redisshake-to-redis-v2
+  namespace: echovote
+spec:
+  podSelector:
+    matchLabels:
+      redis_setup_type: sentinel
+      app: echovote-redis-v2
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: redis-shake
+      ports:
+        - port: 6379
+---
+# Allow Redis v2 pods to talk to each other (replication + sentinel)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-v2-internal
+  namespace: echovote
+spec:
+  podSelector:
+    matchLabels:
+      redis_setup_type: sentinel
+      app: echovote-redis-v2
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              redis_setup_type: sentinel
+              app: echovote-redis-v2
+      ports:
+        - port: 6379   # Redis replication
+        - port: 26379  # Sentinel gossip
