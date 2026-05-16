@@ -10,6 +10,8 @@ resources:
   - secrets/redis-secrets.yaml
   - infrastructure/mongodb.yaml
   - infrastructure/redis-sentinel.yaml
+  - redis-v2/redis-sentinel-crd.yaml
+  - redis-v2/network-policies.yaml
   - server/deployment.yaml
   - server/service.yaml
   - server/ingress.yaml
