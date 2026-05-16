@@ -109,3 +109,24 @@ spec:
               app: echovote-server
       ports:
         - port: 6379
+---
+# Allow redisinsight → redis (port 6379 + 26379 sentinel)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redisinsight-to-redis
+  namespace: echovote
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: redisinsight
+      ports:
+        - port: 6379
+        - port: 26379
