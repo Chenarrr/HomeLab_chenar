@@ -1,10 +1,11 @@
 ---
-# Step 1: RedisReplication — creates the master + replica pods
+# RedisReplication — 3 pods (1 master + 2 replicas) in echovote-infra namespace
+# No Bitnami "redis" service exists here → REDIS_PORT env var collision avoided
 apiVersion: redis.redis.opstreelabs.in/v1beta2
 kind: RedisReplication
 metadata:
   name: echovote-redis-v2-replication
-  namespace: echovote
+  namespace: echovote-infra
 spec:
   clusterSize: 3
   kubernetesConfig:
@@ -20,18 +21,35 @@ spec:
       limits:
         cpu: 200m
         memory: 128Mi
-  # Prevent Bitnami "redis" service from injecting REDIS_PORT=tcp://... into pods
-  # Without this, sentinel crashes with "argument couldn't be parsed into an integer"
+  storage:
+    keepAfterDelete: false
+    volumeClaimTemplate:
+      spec:
+        storageClassName: local-path
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
   podSecurityContext:
-    enableServiceLinks: false
+    runAsUser: 1000
+    runAsNonRoot: true
+    fsGroup: 1000
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app: echovote-redis-v2-replication
 ---
-# Step 2: RedisSentinel — watches the RedisReplication above
-# Sentinel service: echovote-redis-v2-sentinel:26379
+# RedisSentinel — 3 sentinel pods watching the replication above
+# Service: echovote-redis-v2-sentinel.echovote-infra.svc.cluster.local:26379
+# Master group name: mymaster (must match REDIS_SENTINEL_MASTER env in server)
 apiVersion: redis.redis.opstreelabs.in/v1beta2
 kind: RedisSentinel
 metadata:
   name: echovote-redis-v2
-  namespace: echovote
+  namespace: echovote-infra
 spec:
   clusterSize: 3
   redisSentinelConfig:
@@ -46,7 +64,7 @@ spec:
         name: redis-helm-values
         key: password
   kubernetesConfig:
-    image: quay.io/opstree/redis:v7.0.15
+    image: quay.io/opstree/redis-sentinel:v7.0.15
     imagePullPolicy: IfNotPresent
     redisSecret:
       name: redis-helm-values
@@ -58,6 +76,7 @@ spec:
       limits:
         cpu: 200m
         memory: 128Mi
-  # Same fix — prevent REDIS_PORT env var collision from Bitnami service
   podSecurityContext:
-    enableServiceLinks: false
+    runAsUser: 1000
+    runAsNonRoot: true
+    fsGroup: 1000

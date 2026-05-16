@@ -111,6 +111,30 @@ spec:
       ports:
         - port: 6379
 ---
+# Allow RedisShake (runs in echovote-infra) → Bitnami Redis (source during migration)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redisshake-to-bitnami-redis
+  namespace: echovote
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: echovote-infra
+          podSelector:
+            matchLabels:
+              app: redis-shake
+      ports:
+        - port: 6379
+        - port: 26379
+---
 # Allow redisinsight → redis (port 6379 + 26379 sentinel)
 # FIXED: Using correct Bitnami label
 apiVersion: networking.k8s.io/v1

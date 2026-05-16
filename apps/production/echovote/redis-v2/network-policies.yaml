@@ -1,38 +1,71 @@
 ---
-# Allow echovote-server → echovote-redis-v2 (port 6379)
-# This enables the app to connect to the new Redis after cutover
+# Default deny all ingress in echovote-infra
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-server-to-redis-v2
-  namespace: echovote
+  name: default-deny-ingress
+  namespace: echovote-infra
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow echovote-server → redis-v2 replication pods (port 6379)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-echovote-server-to-redis-v2
+  namespace: echovote-infra
 spec:
   podSelector:
     matchLabels:
-      redis_setup_type: sentinel  # Opstree operator label
-      app: echovote-redis-v2
+      app: echovote-redis-v2-replication
   policyTypes:
     - Ingress
   ingress:
     - from:
-        - podSelector:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: echovote
+          podSelector:
             matchLabels:
               app: echovote-server
       ports:
         - port: 6379
 ---
-# Allow redisinsight → echovote-redis-v2 (port 6379 + 26379 sentinel)
-# This lets you inspect the new Redis during migration
+# Allow echovote-server → sentinel pods (port 26379) — for sentinel discovery
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-echovote-server-to-sentinel-v2
+  namespace: echovote-infra
+spec:
+  podSelector:
+    matchLabels:
+      app: echovote-redis-v2-sentinel
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: echovote
+          podSelector:
+            matchLabels:
+              app: echovote-server
+      ports:
+        - port: 26379
+---
+# Allow redisinsight → redis-v2 (port 6379 + 26379)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-redisinsight-to-redis-v2
-  namespace: echovote
+  namespace: echovote-infra
 spec:
   podSelector:
     matchLabels:
-      redis_setup_type: sentinel
-      app: echovote-redis-v2
+      app: echovote-redis-v2-replication
   policyTypes:
     - Ingress
   ingress:
@@ -44,79 +77,28 @@ spec:
         - port: 6379
         - port: 26379
 ---
-# Allow RedisShake → Bitnami Redis (for live sync source)
-# RedisShake needs to read from Bitnami master
+# Allow intra-namespace — replication pods talk to each other + sentinel talks to replication
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-redisshake-to-bitnami-redis
-  namespace: echovote
+  name: allow-intra-echovote-infra
+  namespace: echovote-infra
 spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: redis  # Bitnami label
+  podSelector: {}
   policyTypes:
     - Ingress
   ingress:
     - from:
-        - podSelector:
-            matchLabels:
-              app: redis-shake
-      ports:
-        - port: 6379
+        - podSelector: {}
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-redisshake-to-redis-v2
-  namespace: echovote
-spec:
-  podSelector:
-    matchLabels:
-      redis_setup_type: sentinel
-      app: echovote-redis-v2
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: redis-shake
-      ports:
-        - port: 6379
----
-# Allow Redis v2 pods to talk to each other (replication + sentinel)
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-redis-v2-internal
-  namespace: echovote
-spec:
-  podSelector:
-    matchLabels:
-      app: echovote-redis-v2-replication
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: echovote-redis-v2-replication
-      ports:
-        - port: 6379
-        - port: 26379
----
-# Allow Opstree operator → Redis v2 replication pods
-# Operator connects directly to pod IPs to check master role before creating sentinel
+# Allow Opstree operator → redis-v2 pods (operator reconciles from redis-operator-system)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-operator-to-redis-v2
-  namespace: echovote
+  namespace: echovote-infra
 spec:
-  podSelector:
-    matchLabels:
-      app: echovote-redis-v2-replication
+  podSelector: {}
   policyTypes:
     - Ingress
   ingress:
@@ -124,5 +106,26 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: redis-operator-system
+      ports:
+        - port: 6379
+        - port: 26379
+---
+# Allow RedisShake (runs in echovote-infra) → redis-v2 replication master (target)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redisshake-to-redis-v2
+  namespace: echovote-infra
+spec:
+  podSelector:
+    matchLabels:
+      app: echovote-redis-v2-replication
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: redis-shake
       ports:
         - port: 6379
