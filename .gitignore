@@ -12,6 +12,7 @@ MIGRATION-SUMMARY.md
 MIGRATION-CHECKLIST.md
 REDIS-CACHE-KEY-GUIDE.md
 README-MIGRATION.md
+redisshake-at-scale.md
 
 # Network policy fixes - temporary
 network-policies-FIXED.yaml

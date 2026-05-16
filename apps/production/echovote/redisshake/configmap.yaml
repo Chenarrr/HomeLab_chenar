@@ -1,0 +1,28 @@
+---
+# RedisShake config template — password injected at pod startup from Secret
+# Source: Bitnami Sentinel (auto-discovers master, no hardcoded IPs)
+# Target: Opstree replication-master service (stable DNS, always points to master)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-shake-config
+  namespace: echovote-infra
+data:
+  shake.toml.tmpl: |
+    [source]
+    type = "sentinel"
+    address = "redis.echovote.svc.cluster.local:26379"
+    sentinel_name = "mymaster"
+    password = "__REDIS_PASSWORD__"
+    sentinel_password = "__REDIS_PASSWORD__"
+
+    [target]
+    type = "standalone"
+    # Opstree creates a dedicated master-only service — always routes to current master
+    address = "echovote-redis-v2-replication-master.echovote-infra.svc.cluster.local:6379"
+    password = "__REDIS_PASSWORD__"
+
+    [advanced]
+    log_level = "info"
+    # Print sync progress every 5s so you can watch lag
+    status_port = 0

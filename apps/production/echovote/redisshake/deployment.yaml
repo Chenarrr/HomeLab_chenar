@@ -1,0 +1,66 @@
+---
+# RedisShake — live sync bridge from Bitnami Sentinel → Opstree Redis
+# Runs in echovote-infra (baseline PSS) — has network access to both Redis instances
+# Apply manually when ready to migrate. Delete after cutover complete.
+# NOT added to kustomization — manual lifecycle only.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-shake
+  namespace: echovote-infra
+  labels:
+    app: redis-shake
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-shake
+  template:
+    metadata:
+      labels:
+        app: redis-shake
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      # Prevent Kubernetes service env vars from injecting into this pod
+      enableServiceLinks: false
+      containers:
+        - name: redis-shake
+          image: tairredis/redis-shake:v4.3.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # needs /tmp for generated config
+            capabilities:
+              drop: ["ALL"]
+          # Inject password from Secret, generate config at startup
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              sed "s|__REDIS_PASSWORD__|${REDIS_PASSWORD}|g" \
+                /config-template/shake.toml.tmpl > /tmp/shake.toml
+              echo "Config generated. Starting sync..."
+              /redis-shake /tmp/shake.toml
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-helm-values   # synced by Infisical into echovote-infra
+                  key: password
+          volumeMounts:
+            - name: config-template
+              mountPath: /config-template
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config-template
+          configMap:
+            name: redis-shake-config
