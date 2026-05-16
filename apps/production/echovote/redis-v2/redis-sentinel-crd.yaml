@@ -1,6 +1,29 @@
 ---
-# Opstree RedisSentinel — new Redis cluster alongside Bitnami
-# Services created: echovote-redis-v2 (6379) + echovote-redis-v2-sentinel (26379)
+# Step 1: RedisReplication — creates the master + replica pods
+# Sentinel watches this resource, not standalone pods
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisReplication
+metadata:
+  name: echovote-redis-v2-replication
+  namespace: echovote
+spec:
+  clusterSize: 3
+  kubernetesConfig:
+    image: quay.io/opstree/redis:v7.0.15
+    imagePullPolicy: IfNotPresent
+    redisSecret:
+      name: redis-helm-values
+      key: password
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+---
+# Step 2: RedisSentinel — watches the RedisReplication above
+# Services: echovote-redis-v2:6379 and echovote-redis-v2-sentinel:26379
 apiVersion: redis.redis.opstreelabs.in/v1beta2
 kind: RedisSentinel
 metadata:
@@ -8,24 +31,21 @@ metadata:
   namespace: echovote
 spec:
   clusterSize: 3
-
   redisSentinelConfig:
+    # Must match the RedisReplication name above
     redisReplicationName: echovote-redis-v2-replication
     masterGroupName: mymaster
     quorum: "2"
     downAfterMilliseconds: "5000"
     failoverTimeout: "10000"
     parallelSyncs: "1"
-    # Password for Sentinel to authenticate with Redis nodes
     redisReplicationPassword:
       secretKeyRef:
         name: redis-helm-values
         key: password
-
   kubernetesConfig:
     image: quay.io/opstree/redis:v7.0.15
     imagePullPolicy: IfNotPresent
-    # Password for Redis nodes
     redisSecret:
       name: redis-helm-values
       key: password
