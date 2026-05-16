@@ -34,13 +34,7 @@ spec:
     runAsUser: 1000
     runAsNonRoot: true
     fsGroup: 1000
-  topologySpreadConstraints:
-    - maxSkew: 1
-      topologyKey: kubernetes.io/hostname
-      whenUnsatisfiable: DoNotSchedule
-      labelSelector:
-        matchLabels:
-          app: echovote-redis-v2-replication
+  # No topologySpreadConstraints — single worker node, spread impossible
 ---
 # RedisSentinel — 3 sentinel pods watching the replication above
 # Service: echovote-redis-v2-sentinel.echovote-infra.svc.cluster.local:26379
