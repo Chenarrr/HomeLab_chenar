@@ -54,12 +54,21 @@ spec:
         app: mongo
     spec:
       securityContext:
-        fsGroup: 999   # mongodb group in official image
+        runAsNonRoot: true
+        runAsUser: 999    # mongodb user in official image
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: mongo
           image: mongo:8.0
           ports:
             - containerPort: 27017
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           env:
             - name: MONGO_INITDB_ROOT_USERNAME
               value: root
