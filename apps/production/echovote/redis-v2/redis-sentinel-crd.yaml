@@ -1,6 +1,5 @@
 ---
 # Step 1: RedisReplication — creates the master + replica pods
-# Sentinel watches this resource, not standalone pods
 apiVersion: redis.redis.opstreelabs.in/v1beta2
 kind: RedisReplication
 metadata:
@@ -21,9 +20,13 @@ spec:
       limits:
         cpu: 200m
         memory: 128Mi
+  # Prevent Bitnami "redis" service from injecting REDIS_PORT=tcp://... into pods
+  # Without this, sentinel crashes with "argument couldn't be parsed into an integer"
+  podSecurityContext:
+    enableServiceLinks: false
 ---
 # Step 2: RedisSentinel — watches the RedisReplication above
-# Services: echovote-redis-v2:6379 and echovote-redis-v2-sentinel:26379
+# Sentinel service: echovote-redis-v2-sentinel:26379
 apiVersion: redis.redis.opstreelabs.in/v1beta2
 kind: RedisSentinel
 metadata:
@@ -32,7 +35,6 @@ metadata:
 spec:
   clusterSize: 3
   redisSentinelConfig:
-    # Must match the RedisReplication name above
     redisReplicationName: echovote-redis-v2-replication
     masterGroupName: mymaster
     quorum: "2"
@@ -56,3 +58,6 @@ spec:
       limits:
         cpu: 200m
         memory: 128Mi
+  # Same fix — prevent REDIS_PORT env var collision from Bitnami service
+  podSecurityContext:
+    enableServiceLinks: false
