@@ -94,16 +94,35 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      redis_setup_type: sentinel
-      app: echovote-redis-v2
+      app: echovote-redis-v2-replication
   policyTypes:
     - Ingress
   ingress:
     - from:
         - podSelector:
             matchLabels:
-              redis_setup_type: sentinel
-              app: echovote-redis-v2
+              app: echovote-redis-v2-replication
       ports:
-        - port: 6379   # Redis replication
-        - port: 26379  # Sentinel gossip
+        - port: 6379
+        - port: 26379
+---
+# Allow Opstree operator → Redis v2 replication pods
+# Operator connects directly to pod IPs to check master role before creating sentinel
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-operator-to-redis-v2
+  namespace: echovote
+spec:
+  podSelector:
+    matchLabels:
+      app: echovote-redis-v2-replication
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: redis-operator-system
+      ports:
+        - port: 6379
