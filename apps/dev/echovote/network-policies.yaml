@@ -1,0 +1,132 @@
+---
+# Default: deny all ingress in echovote-dev namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: echovote-dev
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow traefik → echovote-client (port 80)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-client
+  namespace: echovote-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: echovote-client
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 80
+---
+# Allow traefik → echovote-server (port 3001)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-server
+  namespace: echovote-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: echovote-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 3001
+---
+# Allow echovote-server → mongo (port 27017)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-server-to-mongo
+  namespace: echovote-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: mongo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: echovote-server
+      ports:
+        - port: 27017
+---
+# Allow mongo-express → mongo (port 27017)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mongo-express-to-mongo
+  namespace: echovote-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: mongo
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mongo-express
+      ports:
+        - port: 27017
+---
+# Allow redisinsight → mongo (just in case for viewing if redisinsight not used for it — drop if not needed)
+# Allow echovote-server → redis (port 6379)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-server-to-redis
+  namespace: echovote-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: echovote-server
+      ports:
+        - port: 6379
+---
+# Allow redisinsight → redis (port 6379)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redisinsight-to-redis
+  namespace: echovote-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: redisinsight
+      ports:
+        - port: 6379

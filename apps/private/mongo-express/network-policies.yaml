@@ -1,0 +1,31 @@
+---
+# Default: deny all ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: mongo-express
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow traefik → mongo-express (port 8081)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-mongo-express
+  namespace: mongo-express
+spec:
+  podSelector:
+    matchLabels:
+      app: mongo-express
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 8081
