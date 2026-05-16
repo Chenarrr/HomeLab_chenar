@@ -70,6 +70,10 @@ spec:
                 secretKeyRef:
                   name: echovote-secrets
                   key: REDIS_URL
+            - name: REDIS_SENTINEL_HOSTS
+              value: "redis.echovote.svc.cluster.local:26379"
+            - name: REDIS_SENTINEL_MASTER
+              value: "mymaster"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
