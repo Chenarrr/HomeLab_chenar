@@ -13,11 +13,22 @@ spec:
       labels:
         app: redisinsight
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redisinsight
           image: redis/redisinsight:3.4.2
           ports:
             - containerPort: 5540
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           volumeMounts:
             - name: data
               mountPath: /data

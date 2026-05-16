@@ -13,11 +13,23 @@ spec:
       labels:
         app: mongo-express
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: mongo-express
           image: mongo-express:1.0.2-20
           ports:
             - containerPort: 8081
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           env:
             - name: ME_CONFIG_MONGODB_URL
               valueFrom:
