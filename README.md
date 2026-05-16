@@ -25,6 +25,7 @@
 | [rancher.chenar.space](https://rancher.chenar.space) | Rancher | Private — IP restricted |
 | [traefik.chenar.space](https://traefik.chenar.space) | Traefik Dashboard | Private — IP restricted |
 | [mongo.chenar.space](https://mongo.chenar.space) | MongoDB UI (mongo-express) | Private — IP restricted |
+| [redis.chenar.space](https://redis.chenar.space) | Redis UI (RedisInsight) | Private — IP restricted |
 
 ---
 
@@ -78,7 +79,8 @@ HomeLab_chenar/
 │   ├── dev/
 │   │   └── echovote/          # Dev — IP-restricted, scaled to 0 when idle
 │   └── private/
-│       └── mongo-express/     # MongoDB UI — IP-restricted
+│       ├── mongo-express/     # MongoDB UI — IP-restricted
+│       └── redisinsight/      # Redis UI — IP-restricted
 ├── infrastructure/
 │   ├── cilium-lb/             # LoadBalancer IP pool
 │   ├── cert-manager/          # TLS cert issuer
@@ -98,6 +100,21 @@ Private services use Traefik `IPAllowList` middleware — all traffic from unlis
 
 ---
 
+## Security
+
+Defense in depth across every app namespace:
+
+| Layer | What |
+|-------|------|
+| **Pod Security Standards** | `restricted` enforced on all app namespaces — k8s rejects any non-hardened pod at admission |
+| **SecurityContext** | All pods: `runAsNonRoot`, drop ALL caps, `seccomp: RuntimeDefault`, `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem` where possible |
+| **NetworkPolicies** | `default-deny-ingress` per namespace + explicit allows (traefik → app, app → DB only) |
+| **ServiceAccounts** | Dedicated SA per workload with `automountServiceAccountToken: false` — no k8s API tokens in pods |
+| **Secrets** | Zero in git — synced from Infisical Cloud via Kubernetes auth |
+| **TLS** | Let's Encrypt per-domain, auto-renewed by cert-manager |
+
+---
+
 ## Secrets
 
 Zero secrets in git. Everything lives in Infisical Cloud and syncs automatically via Kubernetes auth.
@@ -113,7 +130,7 @@ InfisicalSecret CRD ──► k8s Secret ──► Pod env vars / Helm values
 |----------------|---------|
 | `/echovote` | App secrets + GHCR pull |
 | `/echovote-mongo` | MongoDB credentials |
-| `/echovote-redis` | Redis credentials |
+| `/echovote-redis` | Redis credentials (Bitnami Sentinel HelmRelease) |
 | `/flux` | Flux image pull secret + GitHub webhook token |
 | `/rancher` | Rancher bootstrap password |
 | `/mongo-express` | mongo-express auth + MongoDB URL |
