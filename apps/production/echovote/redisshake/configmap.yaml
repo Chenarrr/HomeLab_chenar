@@ -9,20 +9,17 @@ metadata:
   namespace: echovote-infra
 data:
   shake.toml.tmpl: |
-    [source]
-    type = "sentinel"
-    address = "redis.echovote.svc.cluster.local:26379"
-    sentinel_name = "mymaster"
+    [sync_reader]
+    # Direct master pod — PSYNC requires master, not sentinel port
+    # Update address if Bitnami does failover (query: sentinel masters mymaster)
+    address = "redis-node-1.redis-headless.echovote.svc.cluster.local:6379"
     password = "__REDIS_PASSWORD__"
-    sentinel_password = "__REDIS_PASSWORD__"
 
-    [target]
-    type = "standalone"
-    # Opstree creates a dedicated master-only service — always routes to current master
+    [redis_writer]
+    # Opstree master service — always routes to current master
     address = "echovote-redis-v2-replication-master.echovote-infra.svc.cluster.local:6379"
     password = "__REDIS_PASSWORD__"
 
     [advanced]
     log_level = "info"
-    # Print sync progress every 5s so you can watch lag
     status_port = 0

@@ -73,7 +73,7 @@ spec:
                   name: echovote-secrets
                   key: REDIS_URL
             - name: REDIS_SENTINEL_HOSTS
-              value: "redis:26379"
+              value: "echovote-redis-v2-sentinel.echovote-infra.svc.cluster.local:26379"
             - name: REDIS_SENTINEL_MASTER
               value: "mymaster"
           volumeMounts:

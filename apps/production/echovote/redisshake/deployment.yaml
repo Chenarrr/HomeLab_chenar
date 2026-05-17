@@ -24,11 +24,13 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       # Prevent Kubernetes service env vars from injecting into this pod
       enableServiceLinks: false
       containers:
         - name: redis-shake
-          image: tairredis/redis-shake:v4.3.1
+          image: ghcr.io/tair-opensource/redisshake:latest
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -42,7 +44,7 @@ spec:
               sed "s|__REDIS_PASSWORD__|${REDIS_PASSWORD}|g" \
                 /config-template/shake.toml.tmpl > /tmp/shake.toml
               echo "Config generated. Starting sync..."
-              /redis-shake /tmp/shake.toml
+              /app/redis-shake /tmp/shake.toml
           env:
             - name: REDIS_PASSWORD
               valueFrom:
@@ -53,6 +55,8 @@ spec:
             - name: config-template
               mountPath: /config-template
               readOnly: true
+            - name: app-data
+              mountPath: /app/data
           resources:
             requests:
               cpu: 100m
@@ -64,3 +68,5 @@ spec:
         - name: config-template
           configMap:
             name: redis-shake-config
+        - name: app-data
+          emptyDir: {}
