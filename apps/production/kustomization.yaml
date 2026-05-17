@@ -3,5 +3,4 @@ kind: Kustomization
 resources:
   - echovote
   - portfolio
-  # Add new production apps here:
-  # - myapp
+  - ai-jobs

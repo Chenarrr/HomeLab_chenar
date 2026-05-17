@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-jobs-ui
+  namespace: ai-jobs
+spec:
+  selector:
+    app: ai-jobs-ui
+  ports:
+    - name: http
+      port: 8501
+      targetPort: 8501

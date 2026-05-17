@@ -1,0 +1,30 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: ai-jobs-api
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: ai-jobs-api
+  # Match semver tags (v1.2.3) — pushed by CI on tagged releases
+  filterTags:
+    pattern: '^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$'
+    extract: '$major.$minor.$patch'
+  policy:
+    semver:
+      range: '>=0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: ai-jobs-ui
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: ai-jobs-ui
+  filterTags:
+    pattern: '^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$'
+    extract: '$major.$minor.$patch'
+  policy:
+    semver:
+      range: '>=0.0.0'

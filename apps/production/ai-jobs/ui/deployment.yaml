@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-jobs-ui
+  namespace: ai-jobs
+  labels:
+    app: ai-jobs-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-jobs-ui
+  template:
+    metadata:
+      labels:
+        app: ai-jobs-ui
+    spec:
+      serviceAccountName: ai-jobs-ui
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ui
+          image: ghcr.io/chenarrr/ai-jobs-ui:latest # {"$imagepolicy": "flux-system:ai-jobs-ui"}
+          ports:
+            - containerPort: 8501
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: API_URL
+              value: "https://ai-jobs-api.chenar.space"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: streamlit-home
+              mountPath: /home/appuser/.streamlit
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: streamlit-home
+          emptyDir: {}

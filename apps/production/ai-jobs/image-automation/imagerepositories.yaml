@@ -1,0 +1,21 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: ai-jobs-api
+  namespace: flux-system
+spec:
+  image: ghcr.io/chenarrr/ai-jobs-api
+  interval: 5m
+  secretRef:
+    name: echovote-ghcr-auth
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: ai-jobs-ui
+  namespace: flux-system
+spec:
+  image: ghcr.io/chenarrr/ai-jobs-ui
+  interval: 5m
+  secretRef:
+    name: echovote-ghcr-auth
