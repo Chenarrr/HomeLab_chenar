@@ -1,36 +1,36 @@
-# Adding a New Project
+# Adding a New App
 
-## Tier choice
+Flux watches these folders:
 
-| Tier | Folder | Access |
-|------|--------|--------|
-| Production | `apps/production/<appname>/` | Public — world can reach it |
-| Private | `apps/private/<appname>/` | Your home IP only (185.240.17.117) |
-
-Both tiers are synced by Flux automatically once you push.
-
----
-
-## Step 1 — Create folder structure
-
+```text
+apps/production/   public, semver releases
+apps/dev/          IP restricted, tracks main
+apps/private/      IP restricted, internal tools
 ```
-apps/production/myapp/          (or apps/private/myapp/)
+
+## Folder
+
+```bash
+mkdir -p apps/production/myapp/secrets
+```
+
+Expected files:
+
+```text
+apps/production/myapp/
 ├── kustomization.yaml
 ├── namespace.yaml
 ├── deployment.yaml
 ├── service.yaml
 ├── ingress.yaml
-├── secrets/
-│   └── myapp-secrets.yaml      (InfisicalSecret — no real secrets in git)
-└── image-automation/           (optional — only if using Flux image auto-update)
-    ├── imagerepositories.yaml
-    ├── imagepolicies.yaml
-    └── imageupdateautomation.yaml
+└── secrets/myapp-secrets.yaml
 ```
 
----
+Use `apps/dev/myapp/` or `apps/private/myapp/` for those tiers.
 
-## Step 2 — namespace.yaml
+## Namespace
+
+`apps/production/myapp/namespace.yaml`
 
 ```yaml
 apiVersion: v1
@@ -39,11 +39,12 @@ metadata:
   name: myapp
 ```
 
----
+## Ingress
 
-## Step 3 — ingress.yaml
+`*.chenar.space` already points to Traefik.
 
-**Production (public):**
+`apps/production/myapp/ingress.yaml`
+
 ```yaml
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
@@ -63,34 +64,19 @@ spec:
     certResolver: letsencrypt-prod
 ```
 
-**Private (your IP only) — add the middleware block:**
+For dev/private, add this under the route:
+
 ```yaml
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: myapp
-  namespace: myapp
-spec:
-  entryPoints:
-    - websecure
-  routes:
-    - match: Host(`myapp.chenar.space`)
-      kind: Rule
       middlewares:
-        - name: private-access      # defined in infrastructure/traefik/
+        - name: private-access
           namespace: traefik
-      services:
-        - name: myapp
-          port: 3000
-  tls:
-    certResolver: letsencrypt-prod
 ```
 
----
+## Secrets
 
-## Step 4 — secrets/myapp-secrets.yaml
+Create `/myapp` in Infisical Cloud first.
 
-Never put real secrets in git. Use InfisicalSecret — it syncs from Infisical Cloud.
+`apps/production/myapp/secrets/myapp-secrets.yaml`
 
 ```yaml
 apiVersion: secrets.infisical.com/v1alpha1
@@ -104,93 +90,92 @@ spec:
     resyncInterval: 60s
   authentication:
     kubernetesAuth:
-      identityId: "YOUR_MACHINE_IDENTITY_ID"
+      identityId: "bb4c4eec-3767-4447-a806-c079360125d0"
       autoCreateServiceAccountToken: true
       serviceAccountRef:
         name: infisical-service-account
         namespace: default
       secretsScope:
-        projectSlug: "YOUR_PROJECT_SLUG"
+        projectSlug: "homelab-e-bm-i"
         envSlug: "prod"
-        secretsPath: "/myapp"       # create this path in Infisical Cloud
+        secretsPath: "/myapp"
         recursive: false
   managedKubeSecretReferences:
-    - secretName: myapp-secrets     # k8s Secret name your pods reference
+    - secretName: myapp-secrets
       secretNamespace: myapp
-      secretType: Opaque
       creationPolicy: Owner
       template:
         includeAllSecrets: true
 ```
 
-Put the actual secrets in **Infisical Cloud** under path `/myapp` in your project.
+## App Kustomization
 
----
-
-## Step 5 — kustomization.yaml
+`apps/production/myapp/kustomization.yaml`
 
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - namespace.yaml
+  - secrets/myapp-secrets.yaml
   - deployment.yaml
   - service.yaml
   - ingress.yaml
-  - secrets/myapp-secrets.yaml
-  # add image-automation/ files here if using Flux image updates
 ```
 
----
+Order matters: namespace first, secrets before deployment.
 
-## Step 6 — Register app with Flux
+## Register with Flux
 
-Add one line to the parent kustomization:
+Edit `apps/production/kustomization.yaml`:
 
-**Production app** → `apps/production/kustomization.yaml`:
 ```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 resources:
   - echovote
-  - myapp      # ← add this
+  - portfolio
+  - myapp
 ```
 
-**Private app** → `apps/private/kustomization.yaml`:
-```yaml
-resources:
-  - myapp      # ← add this
-```
-
----
-
-## Step 7 — DNS
-
-Add an A record pointing `myapp.chenar.space` to your Traefik LoadBalancer IP.
-
-Get the IP after cluster is up:
-```bash
-kubectl get svc -n traefik
-# EXTERNAL-IP column = your IP
-```
-
----
-
-## Step 8 — Push
+## Push
 
 ```bash
-git add .
+git add apps/production/myapp apps/production/kustomization.yaml
 git commit -m "feat(apps): add myapp"
-# then push when ready
+git push origin main
 ```
 
-Flux detects the new commit within 1 minute and deploys.
+## Verify
 
----
+```bash
+flux get kustomization apps-production
+kubectl get pods -n myapp -w
+kubectl get secret myapp-secrets -n myapp
+curl -I https://myapp.chenar.space
+```
 
-## Optional — Image Automation (Flux auto-updates image tags)
+Debug Flux:
 
-Only needed if you want Flux to auto-commit new image tags when you push to GHCR.
+```bash
+kubectl describe kustomization apps-production -n flux-system
+```
 
-### image-automation/imagerepositories.yaml
+Common failures:
+
+```text
+namespace missing   -> namespace.yaml order is wrong
+secret missing      -> /myapp does not exist in Infisical
+image pull failed   -> GHCR auth or image tag is wrong
+ingress 404         -> service name or port is wrong
+```
+
+## Optional Image Automation
+
+Add only if Flux should update image tags in git.
+
+`apps/production/myapp/image-automation/imagerepositories.yaml`
+
 ```yaml
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImageRepository
@@ -201,10 +186,11 @@ spec:
   image: ghcr.io/chenarrr/myapp
   interval: 5m
   secretRef:
-    name: echovote-ghcr-auth    # reuse existing GHCR auth secret
+    name: echovote-ghcr-auth
 ```
 
-### image-automation/imagepolicies.yaml
+`apps/production/myapp/image-automation/imagepolicies.yaml`
+
 ```yaml
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImagePolicy
@@ -214,7 +200,6 @@ metadata:
 spec:
   imageRepositoryRef:
     name: myapp
-  # semver tags only (v1.2.3) — SHA tags are ignored (dev quality)
   filterTags:
     pattern: '^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$'
     extract: '$major.$minor.$patch'
@@ -223,57 +208,11 @@ spec:
       range: '>=0.0.0'
 ```
 
-### image-automation/imageupdateautomation.yaml
-```yaml
-apiVersion: image.toolkit.fluxcd.io/v1beta2
-kind: ImageUpdateAutomation
-metadata:
-  name: myapp
-  namespace: flux-system
-spec:
-  interval: 5m
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  git:
-    checkout:
-      ref:
-        branch: main
-    commit:
-      author:
-        name: flux-bot
-        email: flux@chenar.space
-      messageTemplate: "chore(images): update myapp images"
-    push:
-      branch: main
-  update:
-    strategy: Setters
-    path: ./apps/production/myapp   # or ./apps/private/myapp
+Release:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+flux get image repository myapp -n flux-system
+flux get image policy myapp -n flux-system
 ```
-
-### Tag your deployment image
-
-In `deployment.yaml` add the setter comment so Flux knows which line to update:
-```yaml
-image: ghcr.io/chenarrr/myapp:v1.0.0 # {"$imagepolicy": "flux-system:myapp"}
-```
-
-### Promotion workflow
-
-```
-Push code → CI builds sha-abc123 tag → Flux ignores (not semver)
-Test manually
-git tag v1.0.0 && git push --tags
-CI builds v1.0.0 tag → Flux sees it → commits updated image tag → cluster deploys
-```
-
----
-
-## Checklist
-
-- [ ] Create folder + all yaml files
-- [ ] Add app to parent `kustomization.yaml`
-- [ ] Add secrets to Infisical Cloud under `/myapp` path
-- [ ] Fill `YOUR_MACHINE_IDENTITY_ID` + `YOUR_PROJECT_SLUG` in InfisicalSecret
-- [ ] Add DNS A record → Traefik LB IP
-- [ ] Push to git
