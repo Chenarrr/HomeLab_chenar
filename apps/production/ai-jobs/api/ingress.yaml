@@ -29,7 +29,7 @@ spec:
     scheme: https
     permanent: true
 ---
-# HTTPS IngressRoute for AI Jobs API
+# HTTPS IngressRoute for AI Jobs API — IP restricted (your IP only)
 # ai-jobs-api.chenar.space → FastAPI on 8000
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
@@ -42,6 +42,9 @@ spec:
   routes:
     - match: Host(`ai-jobs-api.chenar.space`)
       kind: Rule
+      middlewares:
+        - name: private-access
+          namespace: traefik
       services:
         - name: ai-jobs-api
           port: 8000
