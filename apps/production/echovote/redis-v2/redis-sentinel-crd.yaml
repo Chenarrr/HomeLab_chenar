@@ -9,7 +9,7 @@ metadata:
 spec:
   clusterSize: 3
   kubernetesConfig:
-    image: quay.io/opstree/redis:v7.0.15
+    image: quay.io/opstree/redis:v7.4.8
     imagePullPolicy: IfNotPresent
     redisSecret:
       name: redis-helm-values
@@ -58,7 +58,7 @@ spec:
         name: redis-helm-values
         key: password
   kubernetesConfig:
-    image: quay.io/opstree/redis-sentinel:v7.0.15
+    image: quay.io/opstree/redis-sentinel:v7.4.8
     imagePullPolicy: IfNotPresent
     redisSecret:
       name: redis-helm-values
