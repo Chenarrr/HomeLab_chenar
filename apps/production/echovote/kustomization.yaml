@@ -9,7 +9,6 @@ resources:
   - secrets/mongo-secrets.yaml
   - secrets/redis-secrets.yaml
   - infrastructure/mongodb.yaml
-  - infrastructure/redis-sentinel.yaml
   - redis-v2/namespace.yaml
   - redis-v2/redis-secrets.yaml
   - redis-v2/redis-sentinel-crd.yaml

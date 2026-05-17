@@ -74,7 +74,7 @@ Every `git push` triggers instant Flux reconcile via GitHub webhook — no polli
 HomeLab_chenar/
 ├── apps/
 │   ├── production/
-│   │   ├── echovote/          # Production app (public)
+│   │   ├── echovote/          # Production app + Opstree Redis (echovote-infra ns)
 │   │   └── portfolio/         # Portfolio site (public)
 │   ├── dev/
 │   │   └── echovote/          # Dev — IP-restricted, scaled to 0 when idle
@@ -130,10 +130,38 @@ InfisicalSecret CRD ──► k8s Secret ──► Pod env vars / Helm values
 |----------------|---------|
 | `/echovote` | App secrets + GHCR pull |
 | `/echovote-mongo` | MongoDB credentials |
-| `/echovote-redis` | Redis credentials (Bitnami Sentinel HelmRelease) |
+| `/echovote-redis` | Redis credentials (Opstree Redis Operator) |
 | `/flux` | Flux image pull secret + GitHub webhook token |
 | `/rancher` | Rancher bootstrap password |
 | `/mongo-express` | mongo-express auth + MongoDB URL |
+
+---
+
+## EchoVote Redis Stack
+
+Redis HA via [Opstree Redis Operator](https://github.com/OT-CONTAINER-KIT/redis-operator) in `echovote-infra` namespace.
+
+| Component | Kind | Pods | Notes |
+|-----------|------|------|-------|
+| RedisReplication | CRD | 3 (1 master + 2 replicas) | `quay.io/opstree/redis:v7.0.15`, 2Gi PVC each |
+| RedisSentinel | CRD | 3 | Watches replication, auto-failover, quorum 2 |
+
+**Server connects via sentinel:**
+```
+REDIS_SENTINEL_HOSTS=echovote-redis-v2-sentinel.echovote-infra.svc.cluster.local:26379
+REDIS_SENTINEL_MASTER=mymaster
+```
+
+**Migrated from Bitnami Redis Sentinel → Opstree (2026-05-17)** using [RedisShake](https://github.com/tair-opensource/RedisShake) v4 for zero-downtime, zero data-loss live sync:
+
+1. Deploy Opstree operator (`infrastructure/redis-operator/`)
+2. Create `RedisReplication` + `RedisSentinel` CRDs in `echovote-infra`
+3. Deploy RedisShake as PSYNC bridge (Bitnami master → Opstree master)
+4. Verify identical key counts in both instances (RedisInsight)
+5. Update server `REDIS_SENTINEL_HOSTS` → Opstree sentinel
+6. Delete RedisShake, remove Bitnami HelmRelease
+
+> **Why separate namespace?** Kubernetes auto-injects service env vars — `REDIS_PORT=tcp://...` from the Bitnami service collides with Opstree sentinel startup. `echovote-infra` has no Bitnami service → no collision.
 
 ---
 
