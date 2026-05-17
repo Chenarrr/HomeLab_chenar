@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api
-          image: ghcr.io/chenarrr/ai-jobs-api:latest # {"$imagepolicy": "flux-system:ai-jobs-api"}
+          image: ghcr.io/chenarrr/ai-jobs-api:v1.0.2 # {"$imagepolicy": "flux-system:ai-jobs-api"}
           ports:
             - containerPort: 8000
               protocol: TCP
