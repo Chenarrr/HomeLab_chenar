@@ -39,7 +39,7 @@ spec:
               drop: ["ALL"]
           env:
             - name: API_URL
-              value: "https://ai-jobs-api.chenar.space"
+              value: "http://ai-jobs-api.ai-jobs.svc.cluster.local:8000"
           volumeMounts:
             - name: tmp
               mountPath: /tmp
