@@ -21,8 +21,8 @@
 | [chenar.space](https://chenar.space) | Portfolio | Public |
 | [echovote.chenar.space](https://echovote.chenar.space) | EchoVote | Public |
 | [echovote.dev.chenar.space](https://echovote.dev.chenar.space) | EchoVote Dev | IP restricted |
-| [ai-jobs.chenar.space](https://ai-jobs.chenar.space) | AI Jobs UI (Streamlit) | Public |
-| [ai-jobs-api.chenar.space](https://ai-jobs-api.chenar.space) | AI Jobs API (FastAPI) | Public |
+| [ai-jobs.chenar.space](https://ai-jobs.chenar.space) | AI Jobs UI (Streamlit) | IP restricted |
+| [ai-jobs-api.chenar.space](https://ai-jobs-api.chenar.space) | AI Jobs API (FastAPI) | IP restricted |
 | [rancher.chenar.space](https://rancher.chenar.space) | Rancher | IP restricted |
 | [traefik.chenar.space](https://traefik.chenar.space) | Traefik Dashboard | IP restricted |
 | [mongo.chenar.space](https://mongo.chenar.space) | MongoDB UI | IP restricted |
