@@ -6,7 +6,7 @@ metadata:
   labels:
     app: ai-jobs-api
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: ai-jobs-api
