@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: redis-backup
+  namespace: redis-backup
+spec:
+  # Runs daily at 04:00 Baghdad time (UTC+3) = 01:00 UTC
+  schedule: "0 1 * * *"
+  concurrencyPolicy: Forbid       # don't overlap if previous run is still going
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # Fail the job after 30 minutes — prevents hung pods
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          serviceAccountName: redis-backup
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: false   # apk add needs root; script doesn't touch cluster data
+          containers:
+            - name: backup
+              image: alpine:3.21
+              command: ["/bin/sh", "/scripts/backup.sh"]
+              env:
+                - name: S3_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: redis-backup-secrets
+                      key: S3_BUCKET
+                - name: S3_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: redis-backup-secrets
+                      key: S3_REGION
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: redis-backup-secrets
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: redis-backup-secrets
+                      key: AWS_SECRET_ACCESS_KEY
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 64Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+          volumes:
+            - name: scripts
+              configMap:
+                name: redis-backup-script
+                defaultMode: 0755

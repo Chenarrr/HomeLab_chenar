@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-backup-script
+  namespace: redis-backup
+data:
+  backup.sh: |
+    #!/bin/sh
+    set -e
+
+    echo "=== Redis Backup $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+    echo "Installing tools..."
+    apk add --no-cache aws-cli redis jq curl >/dev/null 2>&1
+
+    KUBE_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    KUBE_CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    K8S=https://kubernetes.default.svc
+    TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    SUCCESS=0
+    FAIL=0
+
+    # Discover all RedisReplication clusters across all namespaces.
+    # Each cluster must have these annotations on its RedisReplication CRD:
+    #   redis-backup/password-secret: "<secret-name>"
+    #   redis-backup/password-key:    "<key-in-secret>"  (defaults to "password")
+    echo "Discovering Redis clusters..."
+    curl -sf --cacert "$KUBE_CA" \
+      -H "Authorization: Bearer $KUBE_TOKEN" \
+      "$K8S/apis/redis.redis.opstreelabs.in/v1beta2/redisreplications" \
+      | jq -r '.items[] | [
+          .metadata.namespace,
+          .metadata.name,
+          (.metadata.annotations["redis-backup/password-secret"] // ""),
+          (.metadata.annotations["redis-backup/password-key"] // "password")
+        ] | join(" ")' > /tmp/clusters.txt
+
+    if [ ! -s /tmp/clusters.txt ]; then
+      echo "No RedisReplication clusters found — nothing to back up"
+      exit 0
+    fi
+
+    echo "Found $(wc -l < /tmp/clusters.txt) cluster(s)"
+
+    while IFS=" " read -r NS NAME SECRET_NAME SECRET_KEY; do
+      echo ""
+      echo "--- $NS/$NAME ---"
+
+      # Get Redis password from the annotated secret
+      REDIS_PASSWORD=""
+      if [ -n "$SECRET_NAME" ]; then
+        REDIS_PASSWORD=$(curl -sf --cacert "$KUBE_CA" \
+          -H "Authorization: Bearer $KUBE_TOKEN" \
+          "$K8S/api/v1/namespaces/$NS/secrets/$SECRET_NAME" \
+          | jq -r ".data[\"$SECRET_KEY\"] // empty" \
+          | base64 -d 2>/dev/null || true)
+      fi
+
+      if [ -z "$REDIS_PASSWORD" ]; then
+        echo "WARN: no password found for $NS/$NAME — connecting without auth"
+      fi
+
+      # Opstree master service: <replication-name>-master.<ns>.svc.cluster.local
+      REDIS_HOST="${NAME}-master.${NS}.svc.cluster.local"
+      REDIS_PORT="6379"
+      RDB_FILE="/tmp/${NS}-${NAME}.rdb"
+
+      # Download RDB via PSYNC — same mechanism RedisShake uses for full sync.
+      # Forces a BGSAVE on master then streams the snapshot to us.
+      echo "Downloading RDB from $REDIS_HOST..."
+      if [ -n "$REDIS_PASSWORD" ]; then
+        redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" \
+          -a "$REDIS_PASSWORD" --no-auth-warning \
+          --rdb "$RDB_FILE" 2>&1 || true
+      else
+        redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" \
+          --rdb "$RDB_FILE" 2>&1 || true
+      fi
+
+      if [ ! -f "$RDB_FILE" ] || [ ! -s "$RDB_FILE" ]; then
+        echo "ERROR: RDB download failed for $NS/$NAME"
+        FAIL=$((FAIL + 1))
+        continue
+      fi
+
+      # Get current key count for metadata
+      if [ -n "$REDIS_PASSWORD" ]; then
+        KEY_COUNT=$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" \
+          -a "$REDIS_PASSWORD" --no-auth-warning DBSIZE 2>/dev/null \
+          | tr -d '[:space:]' || echo "0")
+      else
+        KEY_COUNT=$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" \
+          DBSIZE 2>/dev/null | tr -d '[:space:]' || echo "0")
+      fi
+
+      RDB_SIZE=$(stat -c%s "$RDB_FILE" 2>/dev/null || echo 0)
+      META_FILE="/tmp/${NS}-${NAME}-meta.json"
+
+      printf '{\n  "timestamp": "%s",\n  "namespace": "%s",\n  "cluster": "%s",\n  "host": "%s",\n  "key_count": %s,\n  "rdb_size_bytes": %s,\n  "backup_ok": true\n}\n' \
+        "$TIMESTAMP" "$NS" "$NAME" "$REDIS_HOST" \
+        "${KEY_COUNT:-0}" "$RDB_SIZE" > "$META_FILE"
+
+      # Upload both files to S3
+      S3_PATH="s3://${S3_BUCKET}/redis-backups/${NS}/${NAME}/${TIMESTAMP}"
+
+      aws s3 cp "$RDB_FILE"  "${S3_PATH}/dump.rdb"  \
+        --region "$S3_REGION" --quiet
+      aws s3 cp "$META_FILE" "${S3_PATH}/meta.json" \
+        --region "$S3_REGION" --quiet
+
+      echo "OK: $NS/$NAME → $S3_PATH (keys: ${KEY_COUNT:-0}, ${RDB_SIZE}B)"
+      SUCCESS=$((SUCCESS + 1))
+
+      rm -f "$RDB_FILE" "$META_FILE"
+
+    done < /tmp/clusters.txt
+
+    echo ""
+    echo "=== Done: $SUCCESS succeeded, $FAIL failed ==="
+    [ "$FAIL" -eq 0 ]

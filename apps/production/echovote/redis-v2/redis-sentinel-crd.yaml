@@ -6,6 +6,9 @@ kind: RedisReplication
 metadata:
   name: echovote-redis-v2-replication
   namespace: echovote-infra
+  annotations:
+    redis-backup/password-secret: "redis-helm-values"
+    redis-backup/password-key: "password"
 spec:
   clusterSize: 3
   kubernetesConfig:
