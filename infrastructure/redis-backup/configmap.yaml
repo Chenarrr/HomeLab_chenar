@@ -119,18 +119,15 @@ data:
       AOF_SIZE=$(stat -c%s "$AOF_FILE")
       META_FILE="/tmp/${NS}-${NAME}-meta.json"
 
-      cat > "$META_FILE" << EOF
-{
-  "timestamp":      "$TIMESTAMP",
-  "namespace":      "$NS",
-  "cluster":        "$NAME",
-  "host":           "$REDIS_HOST",
-  "key_count":      ${KEY_COUNT:-0},
-  "aof_size_bytes": $AOF_SIZE,
-  "backup_type":    "aof",
-  "backup_ok":      true
-}
-EOF
+      jq -n \
+        --arg ts    "$TIMESTAMP" \
+        --arg ns    "$NS" \
+        --arg name  "$NAME" \
+        --arg host  "$REDIS_HOST" \
+        --argjson keys "${KEY_COUNT:-0}" \
+        --argjson size "$AOF_SIZE" \
+        '{timestamp:$ts,namespace:$ns,cluster:$name,host:$host,key_count:$keys,aof_size_bytes:$size,backup_type:"aof",backup_ok:true}' \
+        > "$META_FILE"
 
       # 6. Upload AOF + metadata to S3
       # Layout: s3://<bucket>/redis-backups/<namespace>/<cluster>/<timestamp>/
