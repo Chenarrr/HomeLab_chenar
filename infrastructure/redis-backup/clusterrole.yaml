@@ -1,0 +1,30 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: redis-backup
+rules:
+  # Discover all RedisReplication clusters cluster-wide
+  - apiGroups: ["redis.redis.opstreelabs.in"]
+    resources: ["redisreplications"]
+    verbs: ["get", "list"]
+  # Read password secrets from any namespace
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  # exec into pods to stream the AOF file
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec"]
+    verbs: ["get", "list", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: redis-backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: redis-backup
+subjects:
+  - kind: ServiceAccount
+    name: redis-backup
+    namespace: redis-backup

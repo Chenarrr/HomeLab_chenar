@@ -1,0 +1,175 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-backup-script
+  namespace: redis-backup
+data:
+  backup.sh: |
+    #!/bin/sh
+    set -e
+
+    # ─────────────────────────────────────────────
+    # SETUP
+    # ─────────────────────────────────────────────
+    echo "=== Redis AOF Backup $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+
+    # kubectl already in alpine/k8s image — only need aws-cli + redis-cli
+    echo "Installing tools..."
+    apk add --no-cache aws-cli redis >/dev/null 2>&1
+
+    # Kubernetes API access (auto-mounted into every pod)
+    KUBE_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    KUBE_CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    K8S=https://kubernetes.default.svc
+
+    TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    SUCCESS=0
+    FAIL=0
+
+    # ─────────────────────────────────────────────
+    # HELPERS
+    # ─────────────────────────────────────────────
+
+    # Run a K8s API GET request
+    k8s_get() {
+      curl -sf --cacert "$KUBE_CA" \
+        -H "Authorization: Bearer $KUBE_TOKEN" \
+        "$K8S$1"
+    }
+
+    # Run a redis-cli command, with or without password
+    redis_cmd() {
+      _host=$1; _port=$2; _pass=$3; shift 3
+      if [ -n "$_pass" ]; then
+        redis-cli -h "$_host" -p "$_port" -a "$_pass" --no-auth-warning "$@"
+      else
+        redis-cli -h "$_host" -p "$_port" "$@"
+      fi
+    }
+
+    # ─────────────────────────────────────────────
+    # DISCOVER CLUSTERS
+    # ─────────────────────────────────────────────
+    # Finds all RedisReplication objects cluster-wide.
+    # Each object must have these annotations to be backed up:
+    #   redis-backup/password-secret: "<k8s-secret-name>"
+    #   redis-backup/password-key:    "<key-in-secret>"   (default: "password")
+
+    echo "Discovering Redis clusters..."
+
+    k8s_get "/apis/redis.redis.opstreelabs.in/v1beta2/redisreplications" \
+      | jq -r '.items[] | [
+          .metadata.namespace,
+          .metadata.name,
+          (.metadata.annotations["redis-backup/password-secret"] // ""),
+          (.metadata.annotations["redis-backup/password-key"] // "password")
+        ] | join(" ")' > /tmp/clusters.txt
+
+    if [ ! -s /tmp/clusters.txt ]; then
+      echo "No RedisReplication clusters found — nothing to back up"
+      exit 0
+    fi
+
+    echo "Found $(wc -l < /tmp/clusters.txt) cluster(s)"
+
+    # ─────────────────────────────────────────────
+    # BACKUP EACH CLUSTER
+    # ─────────────────────────────────────────────
+
+    while IFS=" " read -r NS NAME SECRET_NAME SECRET_KEY; do
+      echo ""
+      echo "--- $NS/$NAME ---"
+
+      # Step 1: get password from the K8s Secret named in the annotation
+      REDIS_PASSWORD=""
+      if [ -n "$SECRET_NAME" ]; then
+        REDIS_PASSWORD=$(
+          k8s_get "/api/v1/namespaces/$NS/secrets/$SECRET_NAME" \
+            | jq -r ".data[\"$SECRET_KEY\"] // empty" \
+            | base64 -d 2>/dev/null || true
+        )
+      fi
+
+      if [ -z "$REDIS_PASSWORD" ]; then
+        echo "WARN: no password found for $NS/$NAME — connecting without auth"
+      fi
+
+      # Step 2: connect to Opstree master service
+      # Opstree always creates: <replication-name>-master.<namespace>.svc.cluster.local
+      REDIS_HOST="${NAME}-master.${NS}.svc.cluster.local"
+      REDIS_PORT="6379"
+      MASTER_POD="${NAME}-0"
+      AOF_FILE="/tmp/${NS}-${NAME}.aof"
+
+      # Step 3: trigger BGREWRITEAOF — compacts the AOF to a clean state
+      # This ensures we back up a consistent, minimal file.
+      echo "Triggering BGREWRITEAOF on $REDIS_HOST..."
+      redis_cmd "$REDIS_HOST" "$REDIS_PORT" "$REDIS_PASSWORD" BGREWRITEAOF 2>/dev/null || true
+
+      # Wait for rewrite to finish (poll INFO persistence)
+      echo "Waiting for AOF rewrite to complete..."
+      for i in $(seq 1 30); do
+        IN_PROGRESS=$(redis_cmd "$REDIS_HOST" "$REDIS_PORT" "$REDIS_PASSWORD" \
+          INFO persistence 2>/dev/null \
+          | grep "aof_rewrite_in_progress" | tr -d '[:space:]' | cut -d: -f2)
+        if [ "$IN_PROGRESS" = "0" ]; then
+          echo "AOF rewrite done (${i}s)"
+          break
+        fi
+        sleep 1
+      done
+
+      # Step 4: stream AOF file from master pod to local tmp
+      # kubectl exec + cat streams the file without needing kubectl cp
+      echo "Streaming /data/appendonly.aof from pod $NS/$MASTER_POD..."
+      kubectl exec "$MASTER_POD" -n "$NS" -- cat /data/appendonly.aof > "$AOF_FILE" 2>/dev/null || true
+
+      if [ ! -f "$AOF_FILE" ] || [ ! -s "$AOF_FILE" ]; then
+        echo "ERROR: AOF download failed for $NS/$NAME"
+        FAIL=$((FAIL + 1))
+        continue
+      fi
+
+      # Step 5: collect metadata
+      KEY_COUNT=$(
+        redis_cmd "$REDIS_HOST" "$REDIS_PORT" "$REDIS_PASSWORD" DBSIZE 2>/dev/null \
+          | tr -d '[:space:]' || echo "0"
+      )
+      AOF_SIZE=$(stat -c%s "$AOF_FILE" 2>/dev/null || echo 0)
+      META_FILE="/tmp/${NS}-${NAME}-meta.json"
+
+      cat > "$META_FILE" <<EOF
+    {
+      "timestamp":      "$TIMESTAMP",
+      "namespace":      "$NS",
+      "cluster":        "$NAME",
+      "host":           "$REDIS_HOST",
+      "key_count":      ${KEY_COUNT:-0},
+      "aof_size_bytes": $AOF_SIZE,
+      "backup_type":    "aof",
+      "backup_ok":      true
+    }
+    EOF
+
+      # Step 6: upload both files to S3
+      # Structure: redis-backups/<namespace>/<cluster>/<timestamp>/
+      S3_PATH="s3://${S3_BUCKET}/redis-backups/${NS}/${NAME}/${TIMESTAMP}"
+
+      aws s3 cp "$AOF_FILE"  "${S3_PATH}/appendonly.aof" --region "$S3_REGION" --quiet
+      aws s3 cp "$META_FILE" "${S3_PATH}/meta.json"      --region "$S3_REGION" --quiet
+
+      echo "OK: $NS/$NAME → $S3_PATH (keys: ${KEY_COUNT:-0}, size: ${AOF_SIZE}B)"
+      SUCCESS=$((SUCCESS + 1))
+
+      rm -f "$AOF_FILE" "$META_FILE"
+
+    done < /tmp/clusters.txt
+
+    # ─────────────────────────────────────────────
+    # SUMMARY
+    # ─────────────────────────────────────────────
+    echo ""
+    echo "=== Done: $SUCCESS succeeded, $FAIL failed ==="
+
+    # Exit non-zero if any cluster failed — K8s marks the job as failed
+    [ "$FAIL" -eq 0 ]
