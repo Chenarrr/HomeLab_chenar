@@ -4,8 +4,8 @@ metadata:
   name: redis-backup
   namespace: redis-backup
 spec:
-  # Runs daily at 03:35 Erbil time (UTC+3) = 00:35 UTC
-  schedule: "35 0 * * *"
+  # Runs daily at 04:00 Erbil time (UTC+3) = 01:00 UTC
+  schedule: "0 1 * * *"
   concurrencyPolicy: Forbid       # don't overlap if previous run is still going
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
