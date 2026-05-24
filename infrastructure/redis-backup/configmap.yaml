@@ -128,10 +128,14 @@ data:
       # Step 4: stream AOF file from master pod to local tmp
       # kubectl exec + cat streams the file without needing kubectl cp
       echo "Streaming /data/appendonly.aof from pod $NS/$MASTER_POD..."
-      kubectl exec "$MASTER_POD" -n "$NS" -- cat /data/appendonly.aof > "$AOF_FILE" 2>/dev/null || true
+      echo "kubectl version: $(kubectl version --client --short 2>/dev/null || kubectl version --client 2>&1 | head -1)"
+      kubectl exec "$MASTER_POD" -n "$NS" -- cat /data/appendonly.aof > "$AOF_FILE"
+      EXEC_RC=$?
+      echo "kubectl exec exit code: $EXEC_RC"
+      echo "AOF file size: $(stat -c%s "$AOF_FILE" 2>/dev/null || echo 'missing')"
 
       if [ ! -f "$AOF_FILE" ] || [ ! -s "$AOF_FILE" ]; then
-        echo "ERROR: AOF download failed for $NS/$NAME"
+        echo "ERROR: AOF download failed for $NS/$NAME (exit $EXEC_RC)"
         FAIL=$((FAIL + 1))
         continue
       fi
