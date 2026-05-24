@@ -81,7 +81,7 @@ data:
       REDIS_HOST="${NAME}-master.${NS}.svc.cluster.local"
       REDIS_PORT="6379"
       MASTER_POD="${NAME}-0"
-      AOF_FILE="/tmp/${NS}-${NAME}.aof"
+      AOF_FILE="/tmp/${NS}-${NAME}.tar.gz"
 
       # 3. Compact AOF before backup (smaller file, consistent state)
       echo "Compacting AOF on $REDIS_HOST..."
@@ -102,9 +102,10 @@ data:
       done
       [ "$REWRITE_DONE" = "0" ] && echo "WARN: compact still running after 30s — backing up as-is"
 
-      # 4. Stream the AOF file out of the master pod
-      echo "Downloading /data/appendonly.aof from pod $NS/$MASTER_POD..."
-      kubectl exec "$MASTER_POD" -n "$NS" -- cat /data/appendonly.aof > "$AOF_FILE"
+      # 4. Stream the AOF directory out of the master pod
+      # Redis 7+ uses multi-part AOF stored in /data/appendonlydir/ (not a single file)
+      echo "Downloading /data/appendonlydir from pod $NS/$MASTER_POD..."
+      kubectl exec "$MASTER_POD" -n "$NS" -- tar -czf - -C /data appendonlydir > "$AOF_FILE"
       EXEC_RC=$?
       echo "kubectl exec exit code: $EXEC_RC | file size: $(stat -c%s "$AOF_FILE" 2>/dev/null || echo missing)"
 
@@ -132,7 +133,7 @@ data:
       # 6. Upload AOF + metadata to S3
       # Layout: s3://<bucket>/redis-backups/<namespace>/<cluster>/<timestamp>/
       S3_PATH="s3://${S3_BUCKET}/redis-backups/${NS}/${NAME}/${TIMESTAMP}"
-      aws s3 cp "$AOF_FILE"  "${S3_PATH}/appendonly.aof" --region "$S3_REGION" --quiet
+      aws s3 cp "$AOF_FILE"  "${S3_PATH}/appendonly.tar.gz" --region "$S3_REGION" --quiet
       aws s3 cp "$META_FILE" "${S3_PATH}/meta.json"      --region "$S3_REGION" --quiet
 
       echo "OK: $NS/$NAME → $S3_PATH (keys: ${KEY_COUNT:-0}, size: ${AOF_SIZE}B)"
