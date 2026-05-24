@@ -110,6 +110,26 @@ spec:
         - port: 6379
         - port: 26379
 ---
+# Allow redis-backup CronJob → redis-v2 replication master (port 6379 only)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-backup-to-redis-v2
+  namespace: echovote-infra
+spec:
+  podSelector:
+    matchLabels:
+      app: echovote-redis-v2-replication
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: redis-backup
+      ports:
+        - port: 6379
+---
 # Allow RedisShake (runs in echovote-infra) → redis-v2 replication master (target)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
