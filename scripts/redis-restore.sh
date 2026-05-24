@@ -80,28 +80,39 @@ read -r CONFIRM
 REDIS_PASSWORD=$(kubectl get secret redis-helm-values -n "$NS" \
   -o jsonpath='{.data.password}' | base64 -d)
 
-# 6. Stop AOF writes so Redis isn't writing while we replace the files
+# 6. Stop AOF writes on ALL pods so none are writing during the replace
 echo ""
-echo "Pausing AOF on master..."
-kubectl exec "$MASTER_POD" -n "$NS" -- \
-  redis-cli -a "$REDIS_PASSWORD" --no-auth-warning CONFIG SET appendonly no
+echo "Pausing AOF on all pods..."
+for i in 0 1 2; do
+  POD="${CLUSTER}-${i}"
+  kubectl exec "$POD" -n "$NS" -- \
+    redis-cli -a "$REDIS_PASSWORD" --no-auth-warning CONFIG SET appendonly no 2>/dev/null || true
+done
 
-# 7. Replace the appendonlydir in the master pod with the backup
-# Redis 7+ multi-part AOF lives in /data/appendonlydir/
-echo "Replacing /data/appendonlydir with backup..."
-kubectl exec "$MASTER_POD" -n "$NS" -- rm -rf /data/appendonlydir
-kubectl cp "${TMP_DIR}/appendonlydir" "${NS}/${MASTER_POD}:/data/appendonlydir"
+# 7. Replace appendonlydir on ALL pods simultaneously
+# If we only restore the master, when it restarts sentinel sets it as replica
+# and it syncs the OLD data from the remaining replicas — wiping the restore.
+# Restoring all pods means whoever wins master election has the backup state,
+# and the others sync from it (also backup state).
+echo "Replacing /data/appendonlydir on all pods..."
+for i in 0 1 2; do
+  POD="${CLUSTER}-${i}"
+  echo "  → $POD"
+  kubectl exec "$POD" -n "$NS" -- rm -rf /data/appendonlydir
+  kubectl cp "${TMP_DIR}/appendonlydir" "${NS}/${POD}:/data/appendonlydir"
+done
 
-# 8. Restart the pod — Redis replays the AOF files on startup
-echo "Restarting master pod..."
-kubectl delete pod "$MASTER_POD" -n "$NS"
-kubectl wait "pod/$MASTER_POD" --for=condition=Ready -n "$NS" --timeout=120s
+# 8. Delete all pods at once — they all restart from the backup AOF
+echo "Restarting all pods..."
+kubectl delete pod "${CLUSTER}-0" "${CLUSTER}-1" "${CLUSTER}-2" -n "$NS"
+kubectl wait "pod/${CLUSTER}-0" "pod/${CLUSTER}-1" "pod/${CLUSTER}-2" \
+  --for=condition=Ready -n "$NS" --timeout=120s
 
-# 9. Wait for replicas to resync from master
-echo "Waiting 10s for replicas to resync..."
+# 9. Wait for replication to stabilise
+echo "Waiting 10s for replication to stabilise..."
 sleep 10
 
-# 10. Verify key count
+# 10. Verify key count on the master
 echo "Verifying..."
 ACTUAL_KEYS=$(kubectl exec "$MASTER_POD" -n "$NS" -- \
   redis-cli -a "$REDIS_PASSWORD" --no-auth-warning DBSIZE 2>/dev/null \
