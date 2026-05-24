@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-aof-config
+  namespace: echovote-infra
+data:
+  redis-additional.conf: |
+    # ── Persistence: AOF only ────────────────────────────────────────────────
+    # Disable scheduled RDB snapshots (save "" clears all save points).
+    # On-demand BGSAVE (used by the backup CronJob) still works.
+    save ""
+
+    # Enable AOF — Redis appends every write command to the AOF file.
+    appendonly yes
+
+    # Sync to disk every second. Lose at most 1 second of data on crash.
+    # Options: always (safest, slowest) | everysec (balanced) | no (fastest, risky)
+    appendfsync everysec
+
+    # Rewrite (compact) the AOF file when it grows 100% larger than the last rewrite.
+    auto-aof-rewrite-percentage 100
+
+    # Don't rewrite until the AOF file is at least this size.
+    auto-aof-rewrite-min-size 64mb
+
+    # Load data even if the AOF file is truncated at the end (e.g. unclean shutdown).
+    aof-use-rdb-preamble yes

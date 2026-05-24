@@ -11,6 +11,7 @@ resources:
   - infrastructure/mongodb.yaml
   - redis-v2/namespace.yaml
   - redis-v2/redis-secrets.yaml
+  - redis-v2/redis-aof-config.yaml
   - redis-v2/redis-sentinel-crd.yaml
   - redis-v2/network-policies.yaml
   - server/deployment.yaml

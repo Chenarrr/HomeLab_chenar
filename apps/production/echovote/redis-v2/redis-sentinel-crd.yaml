@@ -11,6 +11,8 @@ metadata:
     redis-backup/password-key: "password"
 spec:
   clusterSize: 3
+  redisConfig:
+    additionalRedisConfig: redis-aof-config
   kubernetesConfig:
     image: quay.io/opstree/redis:v7.4.8
     imagePullPolicy: IfNotPresent
