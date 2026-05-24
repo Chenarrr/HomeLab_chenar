@@ -106,18 +106,24 @@ data:
       echo "Triggering BGREWRITEAOF on $REDIS_HOST..."
       redis_cmd "$REDIS_HOST" "$REDIS_PORT" "$REDIS_PASSWORD" BGREWRITEAOF 2>/dev/null || true
 
-      # Wait for rewrite to finish (poll INFO persistence)
+      # Wait up to 30s for BGREWRITEAOF to finish.
+      # Poll INFO persistence — aof_rewrite_in_progress flips 1→0 when done.
       echo "Waiting for AOF rewrite to complete..."
+      REWRITE_DONE=0
       for i in $(seq 1 30); do
         IN_PROGRESS=$(redis_cmd "$REDIS_HOST" "$REDIS_PORT" "$REDIS_PASSWORD" \
           INFO persistence 2>/dev/null \
           | grep "aof_rewrite_in_progress" | tr -d '[:space:]' | cut -d: -f2)
         if [ "$IN_PROGRESS" = "0" ]; then
           echo "AOF rewrite done (${i}s)"
+          REWRITE_DONE=1
           break
         fi
         sleep 1
       done
+      if [ "$REWRITE_DONE" = "0" ]; then
+        echo "WARN: AOF rewrite still in progress after 30s — backing up as-is"
+      fi
 
       # Step 4: stream AOF file from master pod to local tmp
       # kubectl exec + cat streams the file without needing kubectl cp
