@@ -1,5 +1,4 @@
 #!/bin/bash
-# ─────────────────────────────────────────────────────────────────────────────
 # redis-restore.sh — Restore a Redis cluster from an S3 AOF backup
 #
 # Usage:
@@ -8,15 +7,11 @@
 #
 # Examples:
 #   ./redis-restore.sh echovote-infra echovote-redis-v2-replication
-#   ./redis-restore.sh echovote-infra echovote-redis-v2-replication 2026-05-24T01:00:00Z
+#   ./redis-restore.sh echovote-infra echovote-redis-v2-replication 2026-05-24T07:35:07Z
 #
 # Requirements: aws CLI, kubectl, jq — configured and pointing at the right cluster.
-# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-# ─────────────────────────────────────────────
-# CONFIG
-# ─────────────────────────────────────────────
 S3_BUCKET="chenar-homelab-backups"
 S3_REGION="eu-north-1"
 
@@ -27,44 +22,38 @@ TIMESTAMP=${3:-}
 S3_PREFIX="s3://${S3_BUCKET}/redis-backups/${NS}/${CLUSTER}"
 MASTER_POD="${CLUSTER}-0"
 
-# ─────────────────────────────────────────────
-# LIST MODE — no timestamp given
-# Prints all available backups with key count + size from meta.json
-# ─────────────────────────────────────────────
+# ── List mode ─────────────────────────────────────────────────────────────────
 if [ -z "$TIMESTAMP" ]; then
   echo "Available backups for $NS/$CLUSTER:"
   echo ""
-
   aws s3 ls "${S3_PREFIX}/" --region "$S3_REGION" 2>/dev/null \
-    | awk '{print $2}' \
-    | sed 's|/$||' \
+    | awk '{print $2}' | sed 's|/$||' \
     | while read -r TS; do
-        META=$(aws s3 cp "${S3_PREFIX}/${TS}/meta.json" - \
-                 --region "$S3_REGION" 2>/dev/null || echo '{}')
+        META=$(aws s3 cp "${S3_PREFIX}/${TS}/meta.json" - --region "$S3_REGION" 2>/dev/null || echo '{}')
         KEYS=$(echo "$META" | jq -r '.key_count      // "?"')
         SIZE=$(echo "$META" | jq -r '.aof_size_bytes // "?"')
-        printf "  %-35s  keys: %-8s  size: %sB\n" "$TS" "$KEYS" "$SIZE"
+        printf "  %-35s  keys: %-6s  size: %sB\n" "$TS" "$KEYS" "$SIZE"
       done
-
   echo ""
-  echo "To restore, run:"
-  echo "  $0 $NS $CLUSTER <timestamp>"
+  echo "To restore: $0 $NS $CLUSTER <timestamp>"
   exit 0
 fi
 
-# ─────────────────────────────────────────────
-# RESTORE MODE
-# ─────────────────────────────────────────────
+# ── Restore mode ──────────────────────────────────────────────────────────────
 
-# Step 1: download backup from S3 into a temp dir (auto-cleaned on exit)
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+# 1. Download backup from S3
 echo "Downloading backup: $TIMESTAMP"
-aws s3 cp "${S3_PREFIX}/${TIMESTAMP}/appendonly.aof" "${TMP_DIR}/appendonly.aof" --region "$S3_REGION"
-aws s3 cp "${S3_PREFIX}/${TIMESTAMP}/meta.json"      "${TMP_DIR}/meta.json"      --region "$S3_REGION"
+aws s3 cp "${S3_PREFIX}/${TIMESTAMP}/appendonly.tar.gz" "${TMP_DIR}/appendonly.tar.gz" --region "$S3_REGION"
+aws s3 cp "${S3_PREFIX}/${TIMESTAMP}/meta.json"         "${TMP_DIR}/meta.json"         --region "$S3_REGION"
 
-# Step 2: show what we're about to restore
+# 2. Extract the AOF directory
+tar -xzf "${TMP_DIR}/appendonly.tar.gz" -C "$TMP_DIR"
+# Result: $TMP_DIR/appendonlydir/ with manifest + base + incr files
+
+# 3. Show what we're restoring
 META=$(cat "${TMP_DIR}/meta.json")
 EXPECTED_KEYS=$(echo "$META" | jq -r '.key_count')
 AOF_SIZE=$(echo "$META"      | jq -r '.aof_size_bytes')
@@ -73,7 +62,7 @@ echo ""
 echo "┌─ Backup ────────────────────────────────"
 echo "│  Timestamp : $TIMESTAMP"
 echo "│  Keys      : $EXPECTED_KEYS"
-echo "│  AOF size  : ${AOF_SIZE}B"
+echo "│  AOF size  : ${AOF_SIZE}B (tar.gz)"
 echo "├─ Target ────────────────────────────────"
 echo "│  Namespace : $NS"
 echo "│  Cluster   : $CLUSTER"
@@ -81,57 +70,50 @@ echo "│  Master pod: $MASTER_POD"
 echo "└─────────────────────────────────────────"
 echo ""
 
-# Step 3: confirm — must type YES to proceed
-echo "WARNING: This replaces ALL live data in $NS/$CLUSTER with this snapshot."
+# 4. Confirm
+echo "WARNING: This replaces ALL live data in $NS/$CLUSTER with this backup."
 printf "Type YES to continue: "
 read -r CONFIRM
-if [ "$CONFIRM" != "YES" ]; then
-  echo "Aborted."
-  exit 1
-fi
+[ "$CONFIRM" = "YES" ] || { echo "Aborted."; exit 1; }
 
-# Step 4: disable AOF temporarily so Redis doesn't write to it while we replace
-echo ""
-echo "Disabling AOF on master to safely replace the file..."
+# 5. Get Redis password
 REDIS_PASSWORD=$(kubectl get secret redis-helm-values -n "$NS" \
   -o jsonpath='{.data.password}' | base64 -d)
 
+# 6. Stop AOF writes so Redis isn't writing while we replace the files
+echo ""
+echo "Pausing AOF on master..."
 kubectl exec "$MASTER_POD" -n "$NS" -- \
   redis-cli -a "$REDIS_PASSWORD" --no-auth-warning CONFIG SET appendonly no
 
-# Step 5: copy the AOF file into the master pod
-echo "Copying appendonly.aof → ${MASTER_POD}:/data/appendonly.aof ..."
-kubectl cp "${TMP_DIR}/appendonly.aof" "${NS}/${MASTER_POD}:/data/appendonly.aof"
+# 7. Replace the appendonlydir in the master pod with the backup
+# Redis 7+ multi-part AOF lives in /data/appendonlydir/
+echo "Replacing /data/appendonlydir with backup..."
+kubectl exec "$MASTER_POD" -n "$NS" -- rm -rf /data/appendonlydir
+kubectl cp "${TMP_DIR}/appendonlydir" "${NS}/${MASTER_POD}:/data/appendonlydir"
 
-# Step 6: restart master pod so Redis loads the restored AOF on startup
-# Opstree StatefulSet recreates the pod automatically after delete.
-# Redis loads /data/appendonly.aof on every startup — that's the restore mechanism.
-# Replicas then resync from the restored master via PSYNC.
-echo "Restarting master pod to load snapshot..."
+# 8. Restart the pod — Redis replays the AOF files on startup
+echo "Restarting master pod..."
 kubectl delete pod "$MASTER_POD" -n "$NS"
 kubectl wait "pod/$MASTER_POD" --for=condition=Ready -n "$NS" --timeout=120s
 
-# Step 7: wait for replicas to resync
-echo "Waiting 10s for replicas to resync from master..."
+# 9. Wait for replicas to resync from master
+echo "Waiting 10s for replicas to resync..."
 sleep 10
 
-# Step 8: verify key count matches the backup
+# 10. Verify key count
 echo "Verifying..."
 ACTUAL_KEYS=$(kubectl exec "$MASTER_POD" -n "$NS" -- \
   redis-cli -a "$REDIS_PASSWORD" --no-auth-warning DBSIZE 2>/dev/null \
   | tr -d '[:space:]')
 
-# ─────────────────────────────────────────────
-# RESULT
-# ─────────────────────────────────────────────
 echo ""
 echo "=== Restore complete ==="
 echo "  Expected keys : $EXPECTED_KEYS"
 echo "  Actual keys   : $ACTUAL_KEYS"
 
 if [ "$ACTUAL_KEYS" = "$EXPECTED_KEYS" ]; then
-  echo "  Status        : ✓ OK — counts match"
+  echo "  Status        : OK — counts match"
 else
-  echo "  Status        : ⚠ MISMATCH — normal if some keys had TTLs and expired"
-  echo "                  Verify: kubectl exec $MASTER_POD -n $NS -- redis-cli -a <pw> DBSIZE"
+  echo "  Status        : MISMATCH — normal if some keys had TTLs and expired"
 fi
