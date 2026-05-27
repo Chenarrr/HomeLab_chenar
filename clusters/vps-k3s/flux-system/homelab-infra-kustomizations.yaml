@@ -28,10 +28,10 @@ spec:
     kind: GitRepository
     name: flux-system
   healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: cert-manager
-      namespace: cert-manager
+  - apiVersion: helm.toolkit.fluxcd.io/v2
+    kind: HelmRelease
+    name: cert-manager
+    namespace: cert-manager
   timeout: 5m
 ---
 # ClusterIssuers — depends on cert-manager being ready
@@ -48,7 +48,7 @@ spec:
     kind: GitRepository
     name: flux-system
   dependsOn:
-    - name: cert-manager
+  - name: cert-manager
 ---
 # Traefik ingress controller — depends on Cilium LB + cert-manager issuers
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -65,13 +65,13 @@ spec:
     kind: GitRepository
     name: flux-system
   dependsOn:
-    - name: cilium-lb
-    - name: cert-manager-issuers
+  - name: cilium-lb
+  - name: cert-manager-issuers
   healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: traefik
-      namespace: traefik
+  - apiVersion: helm.toolkit.fluxcd.io/v2
+    kind: HelmRelease
+    name: traefik
+    namespace: traefik
   timeout: 5m
 ---
 # Rancher — homelab cluster management UI
@@ -89,13 +89,13 @@ spec:
     kind: GitRepository
     name: flux-system
   dependsOn:
-    - name: cert-manager
-    - name: traefik
+  - name: cert-manager
+  - name: traefik
   healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: rancher
-      namespace: cattle-system
+  - apiVersion: helm.toolkit.fluxcd.io/v2
+    kind: HelmRelease
+    name: rancher
+    namespace: cattle-system
   timeout: 5m
 ---
 # Opstree Redis Operator — manages RedisSentinel CRDs cluster-wide
@@ -114,8 +114,25 @@ spec:
     kind: GitRepository
     name: flux-system
   healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: redis-operator
-      namespace: redis-operator-system
+  - apiVersion: helm.toolkit.fluxcd.io/v2
+    kind: HelmRelease
+    name: redis-operator
+    namespace: redis-operator-system
   timeout: 5m
+
+# Redis AOF backup CronJob — daily at 04:00 Erbil (01:00 UTC)
+# Streams appendonly.aof from master pod → S3
+# apiVersion: kustomize.toolkit.fluxcd.io/v1
+# kind: Kustomization
+# metadata:
+#   name: redis-backup
+#   namespace: flux-system
+# spec:
+#   interval: 2m
+#   path: ./infrastructure/redis-backup
+#   prune: true
+#   sourceRef:
+#     kind: GitRepository
+#     name: flux-system
+#   dependsOn:
+#     - name: redis-operator
