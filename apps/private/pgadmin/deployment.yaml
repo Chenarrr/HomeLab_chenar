@@ -19,23 +19,11 @@ spec:
     spec:
       serviceAccountName: pgadmin
       automountServiceAccountToken: false
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 5050
-        runAsGroup: 5050
-        fsGroup: 5050
-        seccompProfile:
-          type: RuntimeDefault
       containers:
         - name: pgadmin
           image: dpage/pgadmin4:9
           ports:
             - containerPort: 80
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
-            capabilities:
-              drop: ["ALL"]
           env:
             - name: PGADMIN_DEFAULT_EMAIL
               valueFrom:
@@ -51,8 +39,6 @@ spec:
               value: "True"
             - name: PGADMIN_CONFIG_LOGIN_BANNER
               value: '"chenar.space private cluster"'
-            - name: PGADMIN_CONFIG_CONSOLE_LOG_LEVEL
-              value: "10"
           volumeMounts:
             - name: data
               mountPath: /var/lib/pgadmin
@@ -60,7 +46,7 @@ spec:
             httpGet:
               path: /misc/ping
               port: 80
-            initialDelaySeconds: 15
+            initialDelaySeconds: 20
             periodSeconds: 10
             failureThreshold: 3
           resources:

@@ -4,6 +4,8 @@ metadata:
   name: pgadmin
   labels:
     kubernetes.io/metadata.name: pgadmin
-    pod-security.kubernetes.io/enforce: baseline
-    pod-security.kubernetes.io/audit: baseline
-    pod-security.kubernetes.io/warn: baseline
+    # pgAdmin runs as root internally (uses sudo in entrypoint) — privileged PSA required
+    # Access is restricted to home IP only via Traefik private-access middleware
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
