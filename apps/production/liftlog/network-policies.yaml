@@ -90,6 +90,46 @@ spec:
       ports:
         - port: 5432
 ---
+# Allow pgAdmin → liftlog-postgres (port 5432)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-pgadmin-to-postgres
+  namespace: liftlog
+spec:
+  podSelector:
+    matchLabels:
+      app: liftlog-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: pgadmin
+      ports:
+        - port: 5432
+---
+# Allow redisinsight → liftlog-redis (port 6379)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redisinsight-to-redis
+  namespace: liftlog
+spec:
+  podSelector:
+    matchLabels:
+      app: liftlog-redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: redisinsight
+      ports:
+        - port: 6379
+---
 # Allow Infisical operator to push secrets into this namespace
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

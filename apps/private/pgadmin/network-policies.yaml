@@ -1,0 +1,31 @@
+---
+# Default: deny all ingress in pgadmin namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: pgadmin
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow traefik → pgadmin (port 80)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-pgadmin
+  namespace: pgadmin
+spec:
+  podSelector:
+    matchLabels:
+      app: pgadmin
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 80

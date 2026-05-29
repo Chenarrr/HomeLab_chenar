@@ -1,0 +1,19 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: pgadmin
+  namespace: pgadmin
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`pgadmin.chenar.space`)
+      kind: Rule
+      middlewares:
+        - name: private-access
+          namespace: traefik
+      services:
+        - name: pgadmin
+          port: 80
+  tls:
+    certResolver: letsencrypt-prod

@@ -3,4 +3,4 @@ kind: Kustomization
 resources:
   - mongo-express
   - redisinsight
-  # Add private apps here (dashboard, internal tools, etc.):
+  - pgadmin

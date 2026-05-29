@@ -23,6 +23,7 @@
 | [ai-jobs.chenar.space](https://ai-jobs.chenar.space) | AI Jobs UI | IP restricted |
 | [ai-jobs-api.chenar.space](https://ai-jobs-api.chenar.space) | AI Jobs API | IP restricted |
 | [rancher.chenar.space](https://rancher.chenar.space) | Rancher | IP restricted |
+| [pgadmin.chenar.space](https://pgadmin.chenar.space) | pgAdmin 4 | IP restricted |
 | `178.105.91.23:5432` | LiftLog Postgres | IP restricted (TCP) |
 
 ---
