@@ -1,0 +1,13 @@
+---
+# TCP IP allowlist for private database access.
+# Used by IngressRouteTCP to restrict Postgres to home IP only.
+# Update sourceRange if your home IP changes.
+apiVersion: traefik.io/v1alpha1
+kind: MiddlewareTCP
+metadata:
+  name: private-tcp-access
+  namespace: traefik
+spec:
+  ipAllowList:
+    sourceRange:
+      - 185.84.70.116/32   # home IP — update if it changes

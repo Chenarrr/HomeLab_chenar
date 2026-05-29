@@ -1,0 +1,10 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: liftlog-server
+  namespace: flux-system
+spec:
+  image: ghcr.io/chenarrr/liftlog-server
+  interval: 5m
+  secretRef:
+    name: liftlog-ghcr-auth

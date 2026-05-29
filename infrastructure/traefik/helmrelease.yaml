@@ -52,6 +52,13 @@ spec:
         expose:
           default: true
 
+      # Postgres TCP — private remote DB access (home IP only via MiddlewareTCP)
+      postgres:
+        port: 5432
+        expose:
+          default: true
+        protocol: TCP
+
     # Enable dashboard + insecure API on the traefik entrypoint (homelab only)
     api:
       dashboard: true

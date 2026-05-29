@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liftlog-redis
+  namespace: liftlog
+  labels:
+    app: liftlog-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: liftlog-redis
+  template:
+    metadata:
+      labels:
+        app: liftlog-redis
+    spec:
+      serviceAccountName: liftlog-redis
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: redis:7.4.9-alpine
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --requirepass
+            - $(REDIS_PASSWORD)
+          ports:
+            - containerPort: 6379
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: liftlog-secrets
+                  key: REDIS_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "-a", "$(REDIS_PASSWORD)", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "-a", "$(REDIS_PASSWORD)", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi

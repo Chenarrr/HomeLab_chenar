@@ -1,0 +1,107 @@
+---
+# Default: deny all ingress in liftlog namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: liftlog
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow traefik → liftlog-server (port 8080)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-server
+  namespace: liftlog
+spec:
+  podSelector:
+    matchLabels:
+      app: liftlog-server
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 8080
+---
+# Allow liftlog-server → postgres (port 5432)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-server-to-postgres
+  namespace: liftlog
+spec:
+  podSelector:
+    matchLabels:
+      app: liftlog-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: liftlog-server
+      ports:
+        - port: 5432
+---
+# Allow liftlog-server → redis (port 6379)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-server-to-redis
+  namespace: liftlog
+spec:
+  podSelector:
+    matchLabels:
+      app: liftlog-redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: liftlog-server
+      ports:
+        - port: 6379
+---
+# Allow Traefik TCP router → postgres (port 5432) — for private remote DB access
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-to-postgres
+  namespace: liftlog
+spec:
+  podSelector:
+    matchLabels:
+      app: liftlog-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 5432
+---
+# Allow Infisical operator to push secrets into this namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-infisical-operator
+  namespace: liftlog
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: infisical-operator-system

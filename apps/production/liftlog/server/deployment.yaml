@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: liftlog-server
+  namespace: liftlog
+  labels:
+    app: liftlog-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: liftlog-server
+  template:
+    metadata:
+      labels:
+        app: liftlog-server
+    spec:
+      serviceAccountName: liftlog-server
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: ghcr.io/chenarrr/liftlog-server:v0.1.0 # {"$imagepolicy": "flux-system:liftlog-server"}
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: HTTP_ADDR
+              value: ":8080"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: liftlog-secrets
+                  key: DATABASE_URL
+            - name: TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: liftlog-secrets
+                  key: TOKEN_SECRET
+            - name: REDIS_ADDR
+              valueFrom:
+                secretKeyRef:
+                  name: liftlog-secrets
+                  key: REDIS_ADDR
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: liftlog-secrets
+                  key: REDIS_PASSWORD
+            - name: DATABASE_MAX_CONNS
+              value: "8"
+            - name: DATABASE_MIN_CONNS
+              value: "1"
+            - name: ACTIVE_WORKOUT_CACHE_TTL
+              value: "1h"
+            - name: ACCESS_TOKEN_TTL
+              value: "15m"
+            - name: REFRESH_TOKEN_TTL
+              value: "720h"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 30m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}

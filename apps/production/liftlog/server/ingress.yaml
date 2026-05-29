@@ -1,0 +1,46 @@
+---
+# HTTP → HTTPS redirect
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-to-https
+  namespace: liftlog
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: liftlog-api-redirect
+  namespace: liftlog
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`api.liftlog.chenar.space`)
+      kind: Rule
+      middlewares:
+        - name: redirect-to-https
+      services:
+        - name: liftlog-server
+          port: 8080
+---
+# HTTPS — public API endpoint
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: liftlog-api-tls
+  namespace: liftlog
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`api.liftlog.chenar.space`)
+      kind: Rule
+      services:
+        - name: liftlog-server
+          port: 8080
+  tls:
+    certResolver: letsencrypt-prod
