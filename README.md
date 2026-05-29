@@ -62,7 +62,7 @@ apps/
   production/liftlog/      LiftLog API prod (Go + Postgres + Redis)
   production/ai-jobs/      AI Jobs (Streamlit + FastAPI)
   dev/echovote/            EchoVote dev (IP restricted, sha-tagged images)
-  private/                 Internal tools (mongo-express, redisinsight)
+  private/                 Internal tools (mongo-express, redisinsight, pgadmin)
 infrastructure/
   traefik/                 Ingress + TLS + HTTP/TCP IP allowlist middleware
   cert-manager/            Let's Encrypt issuer
@@ -96,6 +96,7 @@ Zero secrets in git. Infisical syncs everything into the cluster via Kubernetes 
 | `/liftlog-postgres` | LiftLog Postgres credentials |
 | `/ai-jobs` | GHCR pull secret for AI Jobs |
 | `/flux` | Image pull + webhook token |
+| `/pgadmin` | pgAdmin login (PGADMIN_DEFAULT_EMAIL, PGADMIN_DEFAULT_PASSWORD) |
 | `/rancher` | Bootstrap password |
 
 ---
@@ -115,6 +116,10 @@ flux reconcile kustomization apps-production --with-source
 
 # LiftLog DB access (home IP only)
 psql -h 178.105.91.23 -p 5432 -U liftlog -d liftlog
+
+# Visual DB/Redis tools
+# pgAdmin:      https://pgadmin.chenar.space
+# RedisInsight: https://redis.chenar.space
 ```
 
 ---
