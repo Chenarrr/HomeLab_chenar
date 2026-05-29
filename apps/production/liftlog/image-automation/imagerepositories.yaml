@@ -6,5 +6,3 @@ metadata:
 spec:
   image: ghcr.io/chenarrr/liftlog-server
   interval: 5m
-  secretRef:
-    name: liftlog-ghcr-auth

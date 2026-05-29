@@ -6,7 +6,6 @@ resources:
   - serviceaccounts.yaml
   - secrets/postgres-secrets.yaml
   - secrets/liftlog-secrets.yaml
-  - secrets/ghcr-pull-secret.yaml
   - postgres/pvc.yaml
   - postgres/deployment.yaml
   - postgres/service.yaml
@@ -16,7 +15,6 @@ resources:
   - server/deployment.yaml
   - server/service.yaml
   - server/ingress.yaml
-  - image-automation/flux-ghcr-secret.yaml
   - image-automation/imagerepositories.yaml
   - image-automation/imagepolicies.yaml
   - image-automation/imageupdateautomation.yaml

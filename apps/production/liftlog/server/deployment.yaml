@@ -17,8 +17,6 @@ spec:
     spec:
       serviceAccountName: liftlog-server
       automountServiceAccountToken: false
-      imagePullSecrets:
-        - name: ghcr-pull-secret
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
