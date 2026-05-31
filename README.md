@@ -18,6 +18,7 @@
 |-----|-----|--------|
 | [chenar.space](https://chenar.space) | Portfolio | Public |
 | [echovote.chenar.space](https://echovote.chenar.space) | EchoVote | Public |
+| [liftlog.chenar.space](https://liftlog.chenar.space) | LiftLog Marketing Site | Public |
 | [api.liftlog.chenar.space](https://api.liftlog.chenar.space) | LiftLog API | Public |
 | [echovote.dev.chenar.space](https://echovote.dev.chenar.space) | EchoVote Dev | IP restricted |
 | [ai-jobs.chenar.space](https://ai-jobs.chenar.space) | AI Jobs UI | IP restricted |
@@ -59,7 +60,7 @@ git tag v1.2.3 && git push --tags   (in app repo)
 apps/
   production/echovote/     EchoVote prod (Node + MongoDB + Redis HA)
   production/portfolio/    Portfolio (static)
-  production/liftlog/      LiftLog API prod (Go + Postgres + Redis)
+  production/liftlog/      LiftLog (Go API + Postgres + Redis + 3D marketing site)
   production/ai-jobs/      AI Jobs (Streamlit + FastAPI)
   dev/echovote/            EchoVote dev (IP restricted, sha-tagged images)
   private/                 Internal tools (mongo-express, redisinsight, pgadmin)
