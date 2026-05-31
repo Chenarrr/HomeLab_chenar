@@ -16,8 +16,6 @@ spec:
         app: liftlog-web
     spec:
       automountServiceAccountToken: false
-      imagePullSecrets:
-        - name: ghcr-pull-secret
       containers:
         - name: web
           image: ghcr.io/chenarrr/3d-website-for-liftlog:latest # {"$imagepolicy": "flux-system:liftlog-web"}
