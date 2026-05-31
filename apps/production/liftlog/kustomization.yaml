@@ -15,6 +15,9 @@ resources:
   - server/deployment.yaml
   - server/service.yaml
   - server/ingress.yaml
+  - web/deployment.yaml
+  - web/service.yaml
+  - web/ingress.yaml
   - image-automation/imagerepositories.yaml
   - image-automation/imagepolicies.yaml
   - image-automation/imageupdateautomation.yaml
