@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orbit-web
+  namespace: orbit-dev
+  labels:
+    app: orbit-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orbit-web
+  template:
+    metadata:
+      labels:
+        app: orbit-web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: ghcr.io/chenarrr/orbit-web:dev-20260101000000 # {"$imagepolicy": "flux-system:orbit-web-dev"}
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: PORT
+              value: "3000"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: NODE_ENV
+              value: production
+            # Server-to-server calls to the Go API stay inside the cluster.
+            - name: API_INTERNAL_URL
+              value: http://orbit-api.orbit-dev.svc.cluster.local:8080
+            - name: APP_URL
+              value: https://orbit.dev.chenar.space
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: next-cache
+              mountPath: /app/.next/cache
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: 300m
+              memory: 320Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}

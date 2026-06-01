@@ -1,0 +1,74 @@
+---
+# HTTP → HTTPS redirect
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-to-https
+  namespace: orbit-dev
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: orbit-dev-redirect-https
+  namespace: orbit-dev
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`orbit.dev.chenar.space`)
+      kind: Rule
+      priority: 1
+      middlewares:
+        - name: redirect-to-https
+      services:
+        - name: orbit-web
+          port: 3000
+---
+# OAuth start/callback talk directly to the Go API (browser-initiated redirects).
+# Everything else is served by the Next.js app, which proxies to the API itself.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: orbit-dev-api-oauth-tls
+  namespace: orbit-dev
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`orbit.dev.chenar.space`) && PathPrefix(`/api/v1/auth/oauth`)
+      kind: Rule
+      priority: 10
+      middlewares:
+        - name: private-access
+          namespace: traefik
+      services:
+        - name: orbit-api
+          port: 8080
+  tls:
+    certResolver: letsencrypt-prod
+---
+# Next.js app — catch-all (SSR, BFF at /bff, auth pages, assets)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: orbit-dev-web-tls
+  namespace: orbit-dev
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`orbit.dev.chenar.space`)
+      kind: Rule
+      priority: 1
+      middlewares:
+        - name: private-access
+          namespace: traefik
+      services:
+        - name: orbit-web
+          port: 3000
+  tls:
+    certResolver: letsencrypt-prod

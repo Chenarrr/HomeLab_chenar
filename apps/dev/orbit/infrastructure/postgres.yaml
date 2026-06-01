@@ -1,0 +1,112 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: orbit-postgres-data
+  namespace: orbit-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orbit-postgres
+  namespace: orbit-dev
+  labels:
+    app: orbit-postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: orbit-postgres
+  template:
+    metadata:
+      labels:
+        app: orbit-postgres
+    spec:
+      securityContext:
+        # Official postgres image runs fine as a fixed non-root uid when the
+        # data dir is group-owned via fsGroup (k3s local-path honours fsGroup).
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:17.10-alpine3.23
+          ports:
+            - containerPort: 5432
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: orbit-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: orbit-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: orbit-secrets
+                  key: POSTGRES_DB
+            # Keep PGDATA in a subdir so the volume mount root can stay clean.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: orbit-postgres-data
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orbit-postgres
+  namespace: orbit-dev
+  labels:
+    app: orbit-postgres
+spec:
+  selector:
+    app: orbit-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

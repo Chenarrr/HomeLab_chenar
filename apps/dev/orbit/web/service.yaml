@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: orbit-web
+  namespace: orbit-dev
+spec:
+  selector:
+    app: orbit-web
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

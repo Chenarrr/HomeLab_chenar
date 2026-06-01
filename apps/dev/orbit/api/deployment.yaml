@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orbit-api
+  namespace: orbit-dev
+  labels:
+    app: orbit-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orbit-api
+  template:
+    metadata:
+      labels:
+        app: orbit-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: ghcr.io/chenarrr/orbit-api:dev-20260101000000 # {"$imagepolicy": "flux-system:orbit-api-dev"}
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: API_PORT
+              value: "8080"
+            - name: APP_URL
+              value: https://orbit.dev.chenar.space
+            - name: CORS_ORIGIN
+              value: https://orbit.dev.chenar.space
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: orbit-secrets
+                  key: DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: orbit-secrets
+                  key: JWT_SECRET
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}

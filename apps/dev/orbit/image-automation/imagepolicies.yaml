@@ -1,0 +1,31 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: orbit-api-dev
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: orbit-api
+  # dev-YYYYMMDDHHMMSS — alphabetical order picks the latest push to main
+  filterTags:
+    pattern: '^dev-(?P<ts>\d+)$'
+    extract: '$ts'
+  policy:
+    alphabetical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: orbit-web-dev
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: orbit-web
+  filterTags:
+    pattern: '^dev-(?P<ts>\d+)$'
+    extract: '$ts'
+  policy:
+    alphabetical:
+      order: asc

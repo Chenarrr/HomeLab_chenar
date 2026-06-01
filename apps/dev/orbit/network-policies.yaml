@@ -1,0 +1,91 @@
+---
+# Default: deny all ingress in orbit-dev
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: orbit-dev
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# traefik → web (3000)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-web
+  namespace: orbit-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: orbit-web
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 3000
+---
+# traefik → api (8080) — only needed for the OAuth redirect path
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-api
+  namespace: orbit-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: orbit-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - port: 8080
+---
+# web → api (8080) — the BFF proxy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web-to-api
+  namespace: orbit-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: orbit-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: orbit-web
+      ports:
+        - port: 8080
+---
+# api → postgres (5432)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-to-postgres
+  namespace: orbit-dev
+spec:
+  podSelector:
+    matchLabels:
+      app: orbit-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: orbit-api
+      ports:
+        - port: 5432

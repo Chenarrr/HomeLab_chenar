@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: orbit-api
+  namespace: orbit-dev
+spec:
+  selector:
+    app: orbit-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
