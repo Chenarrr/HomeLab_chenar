@@ -10,4 +10,4 @@ metadata:
 spec:
   ipAllowList:
     sourceRange:
-      - 185.84.70.116/32   # home IP — update if it changes
+      - 185.240.17.220/32   # home IP — update if it changes
