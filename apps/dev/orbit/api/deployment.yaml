@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api
-          image: ghcr.io/chenarrr/orbit-api:dev-20260602181817 # {"$imagepolicy": "flux-system:orbit-api-dev"}
+          image: ghcr.io/chenarrr/orbit-api:dev-20260602221759 # {"$imagepolicy": "flux-system:orbit-api-dev"}
           ports:
             - containerPort: 8080
               protocol: TCP
