@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: ghcr.io/chenarrr/orbit-web:dev-20260602234519 # {"$imagepolicy": "flux-system:orbit-web-dev"}
+          image: ghcr.io/chenarrr/orbit-web:dev-20260603002151 # {"$imagepolicy": "flux-system:orbit-web-dev"}
           ports:
             - containerPort: 3000
               protocol: TCP
